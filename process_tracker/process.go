@@ -7,10 +7,10 @@ import (
 	"os/exec"
 	"path"
 	"sync"
+	"syscall"
 
 	"github.com/cloudfoundry-incubator/garden/api"
-
-	"github.com/cloudfoundry-incubator/garden-linux/old/iodaemon/link"
+	"github.com/vito/houdini/iodaemon/link"
 )
 
 type Process struct {
@@ -76,31 +76,29 @@ func (p *Process) Spawn(cmd *exec.Cmd, tty *api.TTYSpec) (ready, active chan err
 	spawnPath := path.Join(p.containerPath, "bin", "iodaemon")
 	processSock := path.Join(p.containerPath, "processes", fmt.Sprintf("%d.sock", p.ID()))
 
-	bashFlags := []string{
-		"-c",
-		// spawn but not as a child process (fork off in the bash subprocess).
-		spawnPath + ` "$@" &`,
-		spawnPath,
-	}
+	spawnFlags := []string{}
 
 	if tty != nil {
-		bashFlags = append(bashFlags, "-tty")
+		spawnFlags = append(spawnFlags, "-tty")
 
 		if tty.WindowSize != nil {
-			bashFlags = append(
-				bashFlags,
+			spawnFlags = append(
+				spawnFlags,
 				fmt.Sprintf("-windowColumns=%d", tty.WindowSize.Columns),
 				fmt.Sprintf("-windowRows=%d", tty.WindowSize.Rows),
 			)
 		}
 	}
 
-	bashFlags = append(bashFlags, "spawn", processSock)
+	spawnFlags = append(spawnFlags, "spawn", processSock)
 
-	spawn := exec.Command("bash", append(bashFlags, cmd.Args...)...)
+	spawn := exec.Command(spawnPath, append(spawnFlags, cmd.Args...)...)
 	spawn.Env = cmd.Env
 	spawn.Dir = cmd.Dir
 	spawn.Stderr = os.Stderr
+	spawn.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+	}
 
 	spawnR, err := spawn.StdoutPipe()
 	if err != nil {
@@ -155,6 +153,10 @@ func (p *Process) Attach(processIO api.ProcessIO) {
 	if processIO.Stderr != nil {
 		p.stderr.AddSink(processIO.Stderr)
 	}
+}
+
+func (p *Process) Signal(signal os.Signal) error {
+	return p.link.SendSignal(signal)
 }
 
 func (p *Process) runLinker() {

@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	linkpkg "github.com/cloudfoundry-incubator/garden-linux/old/iodaemon/link"
-	"github.com/cloudfoundry-incubator/garden-linux/old/ptyutil"
 	"github.com/kr/pty"
+	linkpkg "github.com/vito/houdini/iodaemon/link"
+	"github.com/vito/houdini/ptyutil"
 )
 
 func spawn(socketPath string, argv []string, timeout time.Duration, withTty bool, windowColumns int, windowRows int, debug bool) {
@@ -175,6 +175,8 @@ func spawn(socketPath string, argv []string, timeout time.Duration, withTty bool
 					conn.Close()
 					break
 				}
+			} else if input.Signal != nil {
+				cmd.Process.Signal(syscall.Signal(*input.Signal))
 			} else {
 				_, err := stdinW.Write(input.Data)
 				if err != nil {

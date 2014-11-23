@@ -1,6 +1,6 @@
 skeleton: skeleton/workdir skeleton/bin/iodaemon
 
-skeleton/bin/iodaemon: skeleton/bin
+skeleton/bin/iodaemon: skeleton/bin iodaemon/**/*
 	go build -o skeleton/bin/iodaemon ./iodaemon/
 
 skeleton/bin:

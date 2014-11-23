@@ -54,7 +54,9 @@ func (container *container) Handle() string {
 	return container.handle
 }
 
-func (container *container) Stop(kill bool) error { return nil }
+func (container *container) Stop(kill bool) error {
+	return container.processTracker.Stop(kill)
+}
 
 func (container *container) Info() (garden.ContainerInfo, error) { return garden.ContainerInfo{}, nil }
 

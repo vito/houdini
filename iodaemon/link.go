@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	linkpkg "github.com/cloudfoundry-incubator/garden-linux/old/iodaemon/link"
 	"github.com/kr/pty"
+	linkpkg "github.com/vito/houdini/iodaemon/link"
 )
 
 func link(socketPath string) {

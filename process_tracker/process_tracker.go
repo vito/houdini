@@ -2,8 +2,11 @@ package process_tracker
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/cloudfoundry-incubator/garden/api"
 )
@@ -13,6 +16,7 @@ type ProcessTracker interface {
 	Attach(uint32, api.ProcessIO) (api.Process, error)
 	Restore(processID uint32)
 	ActiveProcesses() []api.Process
+	Stop(kill bool) error
 }
 
 type processTracker struct {
@@ -118,6 +122,51 @@ func (t *processTracker) ActiveProcesses() []api.Process {
 	}
 
 	return processes
+}
+
+func (t *processTracker) Stop(kill bool) error {
+	t.processesMutex.RLock()
+
+	processes := make([]*Process, len(t.processes))
+
+	i := 0
+	for _, process := range t.processes {
+		processes[i] = process
+		i++
+	}
+
+	t.processesMutex.RUnlock()
+
+	wait := new(sync.WaitGroup)
+	wait.Add(len(processes))
+
+	for _, process := range processes {
+		exited := make(chan struct{})
+
+		go func(process *Process) {
+			process.Wait()
+			close(exited)
+			wait.Done()
+		}(process)
+
+		if kill {
+			process.Signal(syscall.SIGKILL)
+		} else {
+			process.Signal(syscall.SIGTERM)
+
+			go func(process *Process) {
+				select {
+				case <-exited:
+				case <-time.After(10 * time.Second):
+					process.Signal(os.Kill)
+				}
+			}(process)
+		}
+	}
+
+	wait.Wait()
+
+	return nil
 }
 
 func (t *processTracker) link(processID uint32) {

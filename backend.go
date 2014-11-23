@@ -42,7 +42,13 @@ func (backend *Backend) Start() error {
 	return os.MkdirAll(backend.containersDir, 0755)
 }
 
-func (backend *Backend) Stop() {}
+func (backend *Backend) Stop() {
+	containers, _ := backend.Containers(nil)
+
+	for _, container := range containers {
+		backend.Destroy(container.Handle())
+	}
+}
 
 func (backend *Backend) GraceTime(garden.Container) time.Duration {
 	return 5 * time.Minute
@@ -95,7 +101,16 @@ func (backend *Backend) Destroy(handle string) error {
 		return err
 	}
 
-	return os.RemoveAll(container.dir)
+	err = os.RemoveAll(container.dir)
+	if err != nil {
+		return err
+	}
+
+	backend.containersL.Lock()
+	delete(backend.containers, handle)
+	backend.containersL.Unlock()
+
+	return nil
 }
 
 func (backend *Backend) Containers(filter garden.Properties) ([]garden.Container, error) {
