@@ -26,6 +26,7 @@ type container struct {
 
 	dir     string
 	workDir string
+	tmpDir  string
 
 	properties  garden.Properties
 	propertiesL sync.RWMutex
@@ -36,15 +37,24 @@ type container struct {
 }
 
 func newContainer(spec garden.ContainerSpec, dir string) *container {
+	workDir := filepath.Join(dir, "workdir")
+	tmpDir := filepath.Join(dir, "tmpdir")
+
 	return &container{
 		handle: spec.Handle,
 
 		dir:     dir,
-		workDir: filepath.Join(dir, "workdir"),
+		workDir: workDir,
+		tmpDir:  tmpDir,
 
 		properties: spec.Properties,
 
-		env: spec.Env,
+		env: append(
+			spec.Env,
+			"PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin",
+			"TMPDIR="+tmpDir,
+			"HOME="+workDir,
+		),
 
 		processTracker: process_tracker.New(dir),
 	}
@@ -132,11 +142,31 @@ func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint3
 func (container *container) NetOut(network string, port uint32) error { return nil }
 
 func (container *container) Run(spec garden.ProcessSpec, processIO garden.ProcessIO) (garden.Process, error) {
-	spec.Path = spec.Path
+	args := []string{
+		"-p",
+		fmt.Sprintf(`
+		(version 1)
+		(deny default)
+		(debug deny)
+		(allow network*)
+		(allow process*)
+		(allow signal (target self))
+		(allow mach-lookup)
+		(allow sysctl-read)
+		(allow ipc*)
+		(allow file-read*)
+		(deny file-read* (subpath %q))
+		(allow file-read* (subpath %q))
+		(allow file* (subpath %q) (subpath %q))
+		`, filepath.Dir(container.dir), container.dir, container.workDir, container.tmpDir),
+		spec.Path,
+	}
 
-	cmd := exec.Command(spec.Path, spec.Args...)
+	args = append(args, spec.Args...)
+
+	cmd := exec.Command("sandbox-exec", args...)
 	cmd.Dir = filepath.Join(container.workDir, spec.Dir)
-	cmd.Env = append(os.Environ(), append(container.env, spec.Env...)...)
+	cmd.Env = append(container.env, spec.Env...)
 
 	return container.processTracker.Run(cmd, processIO, spec.TTY)
 }
