@@ -73,7 +73,6 @@ func (backend *Backend) Create(spec garden.ContainerSpec) (garden.Container, err
 	dir := filepath.Join(backend.containersDir, id)
 
 	err := exec.Command("cp", "-a", backend.skeletonDir, dir).Run()
-	// err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return nil, err
 	}

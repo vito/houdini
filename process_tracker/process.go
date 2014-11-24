@@ -156,7 +156,12 @@ func (p *Process) Attach(processIO api.ProcessIO) {
 }
 
 func (p *Process) Signal(signal os.Signal) error {
-	return p.link.SendSignal(signal)
+	select {
+	case <-p.linked:
+		return p.link.SendSignal(signal)
+	default:
+		return nil
+	}
 }
 
 func (p *Process) runLinker() {
