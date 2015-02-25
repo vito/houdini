@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	garden "github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 )
 
 var (

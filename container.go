@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	garden "github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/vito/houdini/process_tracker"
 )
 
@@ -129,7 +129,7 @@ func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint3
 	return 0, 0, nil
 }
 
-func (container *container) NetOut(network string, port uint32) error { return nil }
+func (container *container) NetOut(garden.NetOutRule) error { return nil }
 
 func (container *container) Run(spec garden.ProcessSpec, processIO garden.ProcessIO) (garden.Process, error) {
 	spec.Path = spec.Path

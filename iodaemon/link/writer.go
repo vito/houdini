@@ -3,8 +3,9 @@ package link
 import (
 	"encoding/gob"
 	"net"
-	"os"
 	"syscall"
+
+	"github.com/cloudfoundry-incubator/garden"
 )
 
 type Input struct {
@@ -49,8 +50,17 @@ func (w *Writer) SetWindowSize(cols, rows int) error {
 	})
 }
 
-func (w *Writer) SendSignal(signal os.Signal) error {
-	sig := int(signal.(syscall.Signal))
+func (w *Writer) SendSignal(signal garden.Signal) error {
+	var sig int
+
+	switch signal {
+	case garden.SignalTerminate:
+		sig = int(syscall.SIGTERM)
+	case garden.SignalKill:
+		sig = int(syscall.SIGKILL)
+	default:
+		sig = 42
+	}
 
 	return w.enc.Encode(Input{
 		Signal: &sig,

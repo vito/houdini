@@ -9,7 +9,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/vito/houdini/iodaemon/link"
 )
 
@@ -59,7 +59,7 @@ func (p *Process) Wait() (int, error) {
 	return p.exitStatus, p.exitErr
 }
 
-func (p *Process) SetTTY(tty api.TTYSpec) error {
+func (p *Process) SetTTY(tty garden.TTYSpec) error {
 	<-p.linked
 
 	if tty.WindowSize != nil {
@@ -69,7 +69,7 @@ func (p *Process) SetTTY(tty api.TTYSpec) error {
 	return nil
 }
 
-func (p *Process) Spawn(cmd *exec.Cmd, tty *api.TTYSpec) (ready, active chan error) {
+func (p *Process) Spawn(cmd *exec.Cmd, tty *garden.TTYSpec) (ready, active chan error) {
 	ready = make(chan error, 1)
 	active = make(chan error, 1)
 
@@ -141,7 +141,7 @@ func (p *Process) Link() {
 	p.runningLink.Do(p.runLinker)
 }
 
-func (p *Process) Attach(processIO api.ProcessIO) {
+func (p *Process) Attach(processIO garden.ProcessIO) {
 	if processIO.Stdin != nil {
 		p.stdin.AddSource(processIO.Stdin)
 	}
@@ -155,7 +155,7 @@ func (p *Process) Attach(processIO api.ProcessIO) {
 	}
 }
 
-func (p *Process) Signal(signal os.Signal) error {
+func (p *Process) Signal(signal garden.Signal) error {
 	select {
 	case <-p.linked:
 		return p.link.SendSignal(signal)
