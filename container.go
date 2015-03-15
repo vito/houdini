@@ -36,13 +36,18 @@ type container struct {
 }
 
 func newContainer(spec garden.ContainerSpec, dir string) *container {
+	properties := spec.Properties
+	if properties == nil {
+		properties = garden.Properties{}
+	}
+
 	return &container{
 		handle: spec.Handle,
 
 		dir:     dir,
 		workDir: filepath.Join(dir, "workdir"),
 
-		properties: spec.Properties,
+		properties: properties,
 
 		env: spec.Env,
 
@@ -177,6 +182,14 @@ func (container *container) RemoveProperty(name string) error {
 	delete(container.properties, name)
 
 	return nil
+}
+
+func (container *container) GetProperties() (garden.Properties, error) {
+	return container.currentProperties(), nil
+}
+
+func (container *container) Metrics() (garden.Metrics, error) {
+	return garden.Metrics{}, nil
 }
 
 func (container *container) currentProperties() garden.Properties {
