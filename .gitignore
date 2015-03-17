@@ -1,1 +1,2 @@
-/skeleton
+dist/
+*.tar.gz
