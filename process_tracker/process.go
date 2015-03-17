@@ -1,16 +1,12 @@
 package process_tracker
 
 import (
-	"bufio"
-	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"sync"
 	"syscall"
 
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/vito/houdini/iodaemon/link"
 )
 
 type Process struct {
@@ -21,7 +17,7 @@ type Process struct {
 	runningLink *sync.Once
 
 	linked chan struct{}
-	link   *link.Link
+	link   *exec.Cmd
 
 	exited     chan struct{}
 	exitStatus int
@@ -62,9 +58,9 @@ func (p *Process) Wait() (int, error) {
 func (p *Process) SetTTY(tty garden.TTYSpec) error {
 	<-p.linked
 
-	if tty.WindowSize != nil {
-		return p.link.SetWindowSize(tty.WindowSize.Columns, tty.WindowSize.Rows)
-	}
+	// if tty.WindowSize != nil {
+	// 	return p.link.SetWindowSize(tty.WindowSize.Columns, tty.WindowSize.Rows)
+	// }
 
 	return nil
 }
@@ -73,66 +69,27 @@ func (p *Process) Spawn(cmd *exec.Cmd, tty *garden.TTYSpec) (ready, active chan 
 	ready = make(chan error, 1)
 	active = make(chan error, 1)
 
-	spawnPath := path.Join(p.containerPath, "bin", "iodaemon")
-	processSock := path.Join(p.containerPath, "processes", fmt.Sprintf("%d.sock", p.ID()))
-
-	spawnFlags := []string{}
-
-	if tty != nil {
-		spawnFlags = append(spawnFlags, "-tty")
-
-		if tty.WindowSize != nil {
-			spawnFlags = append(
-				spawnFlags,
-				fmt.Sprintf("-windowColumns=%d", tty.WindowSize.Columns),
-				fmt.Sprintf("-windowRows=%d", tty.WindowSize.Rows),
-			)
-		}
-	}
-
-	spawnFlags = append(spawnFlags, "spawn", processSock)
-
-	spawn := exec.Command(spawnPath, append(spawnFlags, cmd.Args...)...)
-	spawn.Env = cmd.Env
-	spawn.Dir = cmd.Dir
-	spawn.Stderr = os.Stderr
-	spawn.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true,
-	}
-
-	spawnR, err := spawn.StdoutPipe()
+	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
 		ready <- err
 		return
 	}
 
-	spawnOut := bufio.NewReader(spawnR)
+	p.stdin.AddSink(stdinPipe)
 
-	err = spawn.Start()
+	cmd.Stdout = p.stdout
+	cmd.Stderr = p.stderr
+
+	err = cmd.Start()
 	if err != nil {
 		ready <- err
 		return
 	}
 
-	go func() {
-		defer spawn.Wait()
+	p.link = cmd
 
-		_, err := spawnOut.ReadBytes('\n')
-		if err != nil {
-			ready <- fmt.Errorf("failed to read ready: %s", err)
-			return
-		}
-
-		ready <- nil
-
-		_, err = spawnOut.ReadBytes('\n')
-		if err != nil {
-			active <- fmt.Errorf("failed to read active: %s", err)
-			return
-		}
-
-		active <- nil
-	}()
+	ready <- nil
+	active <- nil
 
 	return
 }
@@ -158,27 +115,21 @@ func (p *Process) Attach(processIO garden.ProcessIO) {
 func (p *Process) Signal(signal garden.Signal) error {
 	select {
 	case <-p.linked:
-		return p.link.SendSignal(signal)
+		return p.link.Process.Signal(os.Kill)
 	default:
 		return nil
 	}
 }
 
 func (p *Process) runLinker() {
-	processSock := path.Join(p.containerPath, "processes", fmt.Sprintf("%d.sock", p.ID()))
-
-	link, err := link.Create(processSock, p.stdout, p.stderr)
-	if err != nil {
-		p.completed(-1, err)
-		return
-	}
-
-	p.stdin.AddSink(link)
-
-	p.link = link
 	close(p.linked)
 
-	p.completed(p.link.Wait())
+	status, err := p.link.Process.Wait()
+	if err != nil {
+		p.completed(-1, err)
+	} else {
+		p.completed(status.Sys().(syscall.WaitStatus).ExitStatus(), nil)
+	}
 
 	// don't leak stdin pipe
 	p.stdin.Close()
