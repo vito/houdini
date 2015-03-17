@@ -43,6 +43,8 @@ var skeletonDir = flag.String(
 )
 
 func main() {
+	flag.Parse()
+
 	logger := lager.NewLogger("houdini")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
 
