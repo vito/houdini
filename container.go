@@ -1,6 +1,7 @@
 package houdini
 
 import (
+	"archive/tar"
 	"fmt"
 	"io"
 	"os"
@@ -24,7 +25,6 @@ func (err UndefinedPropertyError) Error() string {
 type container struct {
 	handle string
 
-	dir     string
 	workDir string
 
 	properties  garden.Properties
@@ -44,8 +44,7 @@ func newContainer(spec garden.ContainerSpec, dir string) *container {
 	return &container{
 		handle: spec.Handle,
 
-		dir:     dir,
-		workDir: filepath.Join(dir, "workdir"),
+		workDir: dir,
 
 		properties: properties,
 
@@ -65,23 +64,78 @@ func (container *container) Stop(kill bool) error {
 
 func (container *container) Info() (garden.ContainerInfo, error) { return garden.ContainerInfo{}, nil }
 
+func slashes(path string) string {
+	return strings.Replace(path, "/", string(os.PathSeparator), -1)
+}
+
 func (container *container) StreamIn(dstPath string, tarStream io.Reader) error {
-	finalDestination := filepath.Join(container.workDir, dstPath)
+	finalDestination := filepath.Join(container.workDir, slashes(dstPath))
 
 	err := os.MkdirAll(finalDestination, 0755)
 	if err != nil {
 		return err
 	}
 
-	tarCmd := exec.Command("tar", "xf", "-", "-C", finalDestination)
-	tarCmd.Stdin = tarStream
+	tarReader := tar.NewReader(tarStream)
 
-	return tarCmd.Run()
+	for {
+		hdr, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if hdr.Name == "." {
+			continue
+		}
+
+		err = extractTarArchiveFile(hdr, finalDestination, tarReader)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func extractTarArchiveFile(header *tar.Header, dest string, input io.Reader) error {
+	filePath := filepath.Join(dest, header.Name)
+	fileInfo := header.FileInfo()
+
+	if fileInfo.IsDir() {
+		err := os.MkdirAll(filePath, fileInfo.Mode())
+		if err != nil {
+			return err
+		}
+	} else {
+		err := os.MkdirAll(filepath.Dir(filePath), 0755)
+		if err != nil {
+			return err
+		}
+
+		if fileInfo.Mode()&os.ModeSymlink != 0 {
+			return os.Symlink(header.Linkname, filePath)
+		}
+
+		fileCopy, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fileInfo.Mode())
+		if err != nil {
+			return err
+		}
+		defer fileCopy.Close()
+
+		_, err = io.Copy(fileCopy, input)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (container *container) StreamOut(srcPath string) (io.ReadCloser, error) {
-	absoluteSource := filepath.Join(container.workDir, srcPath)
-
+	absoluteSource := filepath.Join(container.workDir, slashes(srcPath))
 	workingDir := filepath.Dir(absoluteSource)
 	compressArg := filepath.Base(absoluteSource)
 	if strings.HasSuffix(srcPath, "/") {
