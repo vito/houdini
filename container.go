@@ -64,12 +64,8 @@ func (container *container) Stop(kill bool) error {
 
 func (container *container) Info() (garden.ContainerInfo, error) { return garden.ContainerInfo{}, nil }
 
-func slashes(path string) string {
-	return strings.Replace(path, "/", string(os.PathSeparator), -1)
-}
-
 func (container *container) StreamIn(dstPath string, tarStream io.Reader) error {
-	finalDestination := filepath.Join(container.workDir, slashes(dstPath))
+	finalDestination := filepath.Join(container.workDir, filepath.FromSlash(dstPath))
 
 	err := os.MkdirAll(finalDestination, 0755)
 	if err != nil {
@@ -101,7 +97,7 @@ func (container *container) StreamIn(dstPath string, tarStream io.Reader) error 
 }
 
 func (container *container) StreamOut(srcPath string) (io.ReadCloser, error) {
-	absoluteSource := filepath.Join(container.workDir, slashes(srcPath))
+	absoluteSource := filepath.Join(container.workDir, filepath.FromSlash(srcPath))
 	workingDir := filepath.Dir(absoluteSource)
 	compressArg := filepath.Base(absoluteSource)
 	if strings.HasSuffix(srcPath, "/") {
@@ -159,8 +155,8 @@ func (container *container) NetOut(garden.NetOutRule) error { return nil }
 func (container *container) Run(spec garden.ProcessSpec, processIO garden.ProcessIO) (garden.Process, error) {
 	spec.Path = spec.Path
 
-	cmd := exec.Command(slashes(spec.Path), spec.Args...)
-	cmd.Dir = filepath.Join(container.workDir, slashes(spec.Dir))
+	cmd := exec.Command(filepath.FromSlash(spec.Path), spec.Args...)
+	cmd.Dir = filepath.Join(container.workDir, filepath.FromSlash(spec.Dir))
 	cmd.Env = append(os.Environ(), append(container.env, spec.Env...)...)
 
 	return container.processTracker.Run(cmd, processIO, spec.TTY)
