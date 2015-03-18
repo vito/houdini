@@ -131,6 +131,10 @@ func (backend *Backend) BulkInfo(handles []string) (map[string]garden.ContainerI
 	return map[string]garden.ContainerInfoEntry{}, nil
 }
 
+func (backend *Backend) BulkMetrics(handles []string) (map[string]garden.ContainerMetricsEntry, error) {
+	return map[string]garden.ContainerMetricsEntry{}, nil
+}
+
 func (backend *Backend) Lookup(handle string) (garden.Container, error) {
 	backend.containersL.RLock()
 	container, found := backend.containers[handle]
