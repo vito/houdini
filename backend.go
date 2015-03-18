@@ -3,7 +3,6 @@ package houdini
 import (
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -72,7 +71,7 @@ func (backend *Backend) Create(spec garden.ContainerSpec) (garden.Container, err
 
 	dir := filepath.Join(backend.containersDir, id)
 
-	err := exec.Command("cp", "-a", backend.skeletonDir, dir).Run()
+	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +99,7 @@ func (backend *Backend) Destroy(handle string) error {
 		return err
 	}
 
-	err = os.RemoveAll(container.dir)
+	err = os.RemoveAll(container.workDir)
 	if err != nil {
 		return err
 	}
