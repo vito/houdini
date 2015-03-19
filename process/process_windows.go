@@ -44,16 +44,8 @@ func spawn(cmd *exec.Cmd) (process, error) {
 		return nil, fmt.Errorf("pipe failed: %s", err)
 	}
 
-	go func() {
-		io.Copy(cmd.Stdout, ro)
-		cmd.Stdout.Close()
-	}()
-
-	go func() {
-		io.Copy(cmd.Stderr, re)
-		cmd.Stderr.Close()
-	}()
-
+	go io.Copy(cmd.Stdout, ro)
+	go io.Copy(cmd.Stderr, re)
 	go func() {
 		io.Copy(wi, cmd.Stdin)
 		wi.Close()
