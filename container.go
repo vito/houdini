@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/vito/houdini/process_tracker"
+	"github.com/vito/houdini/process"
 )
 
 type UndefinedPropertyError struct {
@@ -32,7 +32,7 @@ type container struct {
 
 	env []string
 
-	processTracker process_tracker.ProcessTracker
+	processTracker process.ProcessTracker
 }
 
 func newContainer(spec garden.ContainerSpec, dir string) *container {
@@ -50,7 +50,7 @@ func newContainer(spec garden.ContainerSpec, dir string) *container {
 
 		env: spec.Env,
 
-		processTracker: process_tracker.New(dir),
+		processTracker: process.NewTracker(dir),
 	}
 }
 

@@ -1,4 +1,4 @@
-package process_tracker
+package process
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ func (e UnknownProcessError) Error() string {
 	return fmt.Sprintf("unknown process: %d", e.ProcessID)
 }
 
-func New(containerPath string) ProcessTracker {
+func NewTracker(containerPath string) ProcessTracker {
 	return &processTracker{
 		containerPath: containerPath,
 

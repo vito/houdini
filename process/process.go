@@ -1,13 +1,16 @@
-package process_tracker
+package process
 
 import (
-	"os"
 	"os/exec"
 	"sync"
-	"syscall"
 
 	"github.com/cloudfoundry-incubator/garden"
 )
+
+type process interface {
+	Terminate() error
+	Wait() (int, error)
+}
 
 type Process struct {
 	id uint32
@@ -16,8 +19,8 @@ type Process struct {
 
 	runningLink *sync.Once
 
-	linked chan struct{}
-	link   *exec.Cmd
+	linked  chan struct{}
+	process process
 
 	exited     chan struct{}
 	exitStatus int
@@ -80,13 +83,13 @@ func (p *Process) Spawn(cmd *exec.Cmd, tty *garden.TTYSpec) (ready, active chan 
 	cmd.Stdout = p.stdout
 	cmd.Stderr = p.stderr
 
-	err = cmd.Start()
+	process, err := spawn(cmd)
 	if err != nil {
 		ready <- err
 		return
 	}
 
-	p.link = cmd
+	p.process = process
 
 	ready <- nil
 	active <- nil
@@ -115,7 +118,7 @@ func (p *Process) Attach(processIO garden.ProcessIO) {
 func (p *Process) Signal(signal garden.Signal) error {
 	select {
 	case <-p.linked:
-		return p.link.Process.Signal(os.Kill)
+		return p.process.Terminate()
 	default:
 		return nil
 	}
@@ -124,12 +127,7 @@ func (p *Process) Signal(signal garden.Signal) error {
 func (p *Process) runLinker() {
 	close(p.linked)
 
-	status, err := p.link.Process.Wait()
-	if err != nil {
-		p.completed(-1, err)
-	} else {
-		p.completed(status.Sys().(syscall.WaitStatus).ExitStatus(), nil)
-	}
+	p.completed(p.Wait())
 
 	// don't leak stdin pipe
 	p.stdin.Close()
