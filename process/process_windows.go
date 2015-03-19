@@ -44,9 +44,20 @@ func spawn(cmd *exec.Cmd) (process, error) {
 		return nil, fmt.Errorf("pipe failed: %s", err)
 	}
 
-	go io.Copy(cmd.Stdout, ro)
-	go io.Copy(cmd.Stderr, re)
-	go io.Copy(wi, cmd.Stdin)
+	go func() {
+		io.Copy(cmd.Stdout, ro)
+		cmd.Stdout.Close()
+	}()
+
+	go func() {
+		io.Copy(cmd.Stderr, re)
+		cmd.Stderr.Close()
+	}()
+
+	go func() {
+		io.Copy(wi, cmd.Stdin)
+		wi.Close()
+	}()
 
 	attr := &syscall.ProcAttr{
 		Dir:   cmd.Dir,
@@ -120,6 +131,10 @@ func spawn(cmd *exec.Cmd) (process, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create process: %s", err)
 	}
+
+	ri.Close()
+	wo.Close()
+	we.Close()
 
 	jobName, err := syscall.UTF16PtrFromString(fmt.Sprintf("%d", time.Now().UnixNano()))
 	if err != nil {
