@@ -127,7 +127,7 @@ func (p *Process) Signal(signal garden.Signal) error {
 func (p *Process) runLinker() {
 	close(p.linked)
 
-	p.completed(p.Wait())
+	p.completed(p.process.Wait())
 
 	// don't leak stdin pipe
 	p.stdin.Close()
