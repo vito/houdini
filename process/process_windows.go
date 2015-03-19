@@ -54,17 +54,10 @@ func spawn(cmd *exec.Cmd) (process, error) {
 		Files: []uintptr{ri.Fd(), wo.Fd(), we.Fd()},
 	}
 
-	gitPath, err := exec.LookPath(cmd.Path)
+	cmd.Path, err = lookExtensions(cmd.Path, cmd.Dir)
 	if err != nil {
 		return nil, err
 	}
-
-	lp, err := lookExtensions(cmd.Path, cmd.Dir)
-	if err != nil {
-		return nil, err
-	}
-
-	cmd.Path = lp
 
 	// Acquire the fork lock so that no other threads
 	// create new fds that are not yet close-on-exec
@@ -97,7 +90,7 @@ func spawn(cmd *exec.Cmd) (process, error) {
 	flags |= win32.CREATE_SUSPENDED
 	flags |= win32.CREATE_BREAKAWAY_FROM_JOB
 
-	argvp0, err := syscall.UTF16PtrFromString(gitPath)
+	argvp0, err := syscall.UTF16PtrFromString(cmd.Path)
 	if err != nil {
 		return nil, err
 	}
