@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 	"unicode/utf16"
@@ -224,9 +223,7 @@ func createEnvBlock(envv []string) *uint16 {
 	return &utf16.Encode([]rune(string(b)))[0]
 }
 
-// lookExtensions finds windows executable by its dir and path.
-// It uses LookPath to try appropriate extensions.
-// lookExtensions does not search PATH, instead it converts `prog` into `.\prog`.
+// adapted from lookExtensions but returns resolved path rather than stripping it out
 func lookExtensions(path, dir string) (string, error) {
 	if filepath.Base(path) == path {
 		path = filepath.Join(".", path)
@@ -240,12 +237,8 @@ func lookExtensions(path, dir string) (string, error) {
 	if len(path) > 1 && os.IsPathSeparator(path[0]) {
 		return exec.LookPath(path)
 	}
+
 	dirandpath := filepath.Join(dir, path)
-	// We assume that LookPath will only add file extension.
-	lp, err := exec.LookPath(dirandpath)
-	if err != nil {
-		return "", err
-	}
-	ext := strings.TrimPrefix(lp, dirandpath)
-	return path + ext, nil
+
+	return exec.LookPath(dirandpath)
 }
