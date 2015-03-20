@@ -8,4 +8,4 @@ inputs:
     path: gopath/src/github.com/vito/houdini
 
 run:
-  path: ci/build-artifacts
+  path: gopath/src/github.com/vito/houdini/ci/build-artifacts
