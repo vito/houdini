@@ -8,14 +8,12 @@ import (
 )
 
 type process interface {
-	Terminate() error
+	Signal(garden.Signal) error
 	Wait() (int, error)
 }
 
 type Process struct {
 	id uint32
-
-	containerPath string
 
 	runningLink *sync.Once
 
@@ -31,11 +29,9 @@ type Process struct {
 	stderr *fanoutWriter
 }
 
-func NewProcess(id uint32, containerPath string) *Process {
+func NewProcess(id uint32) *Process {
 	return &Process{
 		id: id,
-
-		containerPath: containerPath,
 
 		runningLink: &sync.Once{},
 
@@ -72,22 +68,13 @@ func (p *Process) Spawn(cmd *exec.Cmd, tty *garden.TTYSpec) (ready, active chan 
 	ready = make(chan error, 1)
 	active = make(chan error, 1)
 
-	stdinPipe, err := cmd.StdinPipe()
+	process, stdin, err := spawn(cmd, tty, p.stdout, p.stderr)
 	if err != nil {
 		ready <- err
 		return
 	}
 
-	p.stdin.AddSink(stdinPipe)
-
-	cmd.Stdout = p.stdout
-	cmd.Stderr = p.stderr
-
-	process, err := spawn(cmd)
-	if err != nil {
-		ready <- err
-		return
-	}
+	p.stdin.AddSink(stdin)
 
 	p.process = process
 
@@ -118,7 +105,7 @@ func (p *Process) Attach(processIO garden.ProcessIO) {
 func (p *Process) Signal(signal garden.Signal) error {
 	select {
 	case <-p.linked:
-		return p.process.Terminate()
+		return p.process.Signal(signal)
 	default:
 		return nil
 	}

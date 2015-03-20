@@ -18,7 +18,6 @@ var (
 
 type Backend struct {
 	containersDir string
-	skeletonDir   string
 
 	containers  map[string]*container
 	containersL sync.RWMutex
@@ -26,10 +25,9 @@ type Backend struct {
 	containerNum uint64
 }
 
-func NewBackend(containersDir string, skeletonDir string) *Backend {
+func NewBackend(containersDir string) *Backend {
 	return &Backend{
 		containersDir: containersDir,
-		skeletonDir:   skeletonDir,
 
 		containers: make(map[string]*container),
 

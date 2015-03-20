@@ -12,10 +12,9 @@ import (
 	"unicode/utf16"
 	"unsafe"
 
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/contester/runlib/win32"
 )
-
-const PROCESS_ALL_ACCESS = 0x001F0FFF // im sure that's fine
 
 var kernel32 = syscall.NewLazyDLL("kernel32.dll")
 
@@ -28,28 +27,24 @@ func terminateJobObject(thread syscall.Handle, exitCode uint32) (err error) {
 	return nil
 }
 
-func spawn(cmd *exec.Cmd) (process, error) {
+func spawn(cmd *exec.Cmd, _ *garden.TTYSpec, stdout io.Writer, stderr io.Writer) (process, io.WriteCloser, error) {
 	ro, wo, err := os.Pipe()
 	if err != nil {
-		return nil, fmt.Errorf("pipe failed: %s", err)
+		return nil, nil, fmt.Errorf("pipe failed: %s", err)
 	}
 
 	re, we, err := os.Pipe()
 	if err != nil {
-		return nil, fmt.Errorf("pipe failed: %s", err)
+		return nil, nil, fmt.Errorf("pipe failed: %s", err)
 	}
 
 	ri, wi, err := os.Pipe()
 	if err != nil {
-		return nil, fmt.Errorf("pipe failed: %s", err)
+		return nil, nil, fmt.Errorf("pipe failed: %s", err)
 	}
 
-	go io.Copy(cmd.Stdout, ro)
-	go io.Copy(cmd.Stderr, re)
-	go func() {
-		io.Copy(wi, cmd.Stdin)
-		wi.Close()
-	}()
+	go io.Copy(stdout, ro)
+	go io.Copy(stderr, re)
 
 	attr := &syscall.ProcAttr{
 		Dir:   cmd.Dir,
@@ -59,7 +54,7 @@ func spawn(cmd *exec.Cmd) (process, error) {
 
 	lookedUpPath, err := lookExtensions(cmd.Path, cmd.Dir)
 	if err != nil {
-		return nil, fmt.Errorf("look extensions failed: %s", err)
+		return nil, nil, fmt.Errorf("look extensions failed: %s", err)
 	}
 
 	// Acquire the fork lock so that no other threads
@@ -74,8 +69,9 @@ func spawn(cmd *exec.Cmd) (process, error) {
 		if attr.Files[i] > 0 {
 			err := syscall.DuplicateHandle(p, syscall.Handle(attr.Files[i]), p, &fd[i], 0, true, syscall.DUPLICATE_SAME_ACCESS)
 			if err != nil {
-				return nil, fmt.Errorf("duplicating handle failed: %s", err)
+				return nil, nil, fmt.Errorf("duplicating handle failed: %s", err)
 			}
+
 			defer syscall.CloseHandle(syscall.Handle(fd[i]))
 		}
 	}
@@ -95,17 +91,17 @@ func spawn(cmd *exec.Cmd) (process, error) {
 
 	argvp0, err := syscall.UTF16PtrFromString(lookedUpPath)
 	if err != nil {
-		return nil, fmt.Errorf("stringing failed: %s", err)
+		return nil, nil, fmt.Errorf("stringing failed: %s", err)
 	}
 
 	argvp0v0v0v0, err := syscall.UTF16PtrFromString(makeCmdLine(cmd.Args))
 	if err != nil {
-		return nil, fmt.Errorf("stringing failed: %s", err)
+		return nil, nil, fmt.Errorf("stringing failed: %s", err)
 	}
 
 	dirp, err := syscall.UTF16PtrFromString(attr.Dir)
 	if err != nil {
-		return nil, fmt.Errorf("stringing failed: %s", err)
+		return nil, nil, fmt.Errorf("stringing failed: %s", err)
 	}
 
 	err = syscall.CreateProcess(
@@ -121,7 +117,7 @@ func spawn(cmd *exec.Cmd) (process, error) {
 		pi,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create process: %s", err)
+		return nil, nil, fmt.Errorf("create process: %s", err)
 	}
 
 	ri.Close()
@@ -130,28 +126,28 @@ func spawn(cmd *exec.Cmd) (process, error) {
 
 	jobName, err := syscall.UTF16PtrFromString(fmt.Sprintf("%d", time.Now().UnixNano()))
 	if err != nil {
-		return nil, fmt.Errorf("stringing failed: %s", err)
+		return nil, nil, fmt.Errorf("stringing failed: %s", err)
 	}
 
 	jobHandle, err := win32.CreateJobObject(nil, jobName)
 	if err != nil {
-		return nil, fmt.Errorf("create job failed: %s", err)
+		return nil, nil, fmt.Errorf("create job failed: %s", err)
 	}
 
 	err = win32.AssignProcessToJobObject(jobHandle, pi.Process)
 	if err != nil {
-		return nil, fmt.Errorf("assign failed: %s", err)
+		return nil, nil, fmt.Errorf("assign failed: %s", err)
 	}
 
 	_, err = win32.ResumeThread(pi.Thread)
 	if err != nil {
-		return nil, fmt.Errorf("resume failed: %s", err)
+		return nil, nil, fmt.Errorf("resume failed: %s", err)
 	}
 
 	return &jobProcess{
 		jobHandle:     jobHandle,
 		processHandle: pi.Process,
-	}, nil
+	}, wi, nil
 }
 
 type jobProcess struct {
@@ -159,7 +155,7 @@ type jobProcess struct {
 	processHandle syscall.Handle
 }
 
-func (process *jobProcess) Terminate() error {
+func (process *jobProcess) Signal(garden.Signal) error {
 	return terminateJobObject(process.jobHandle, 1)
 }
 

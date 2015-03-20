@@ -35,7 +35,7 @@ type container struct {
 	processTracker process.ProcessTracker
 }
 
-func newContainer(spec garden.ContainerSpec, dir string) *container {
+func newContainer(spec garden.ContainerSpec, workDir string) *container {
 	properties := spec.Properties
 	if properties == nil {
 		properties = garden.Properties{}
@@ -44,13 +44,13 @@ func newContainer(spec garden.ContainerSpec, dir string) *container {
 	return &container{
 		handle: spec.Handle,
 
-		workDir: dir,
+		workDir: workDir,
 
 		properties: properties,
 
 		env: spec.Env,
 
-		processTracker: process.NewTracker(dir),
+		processTracker: process.NewTracker(),
 	}
 }
 

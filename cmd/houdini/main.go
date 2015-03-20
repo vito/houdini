@@ -36,12 +36,6 @@ var containersDir = flag.String(
 	"directory in which to store containers",
 )
 
-var skeletonDir = flag.String(
-	"skeleton",
-	"./skeleton",
-	"directory containing container skeleton",
-)
-
 func main() {
 	flag.Parse()
 
@@ -53,12 +47,7 @@ func main() {
 		logger.Fatal("failed-to-determine-depot-dir", err)
 	}
 
-	skeleton, err := filepath.Abs(*skeletonDir)
-	if err != nil {
-		logger.Fatal("failed-to-determine-skeleton-dir", err)
-	}
-
-	backend := houdini.NewBackend(depot, skeleton)
+	backend := houdini.NewBackend(depot)
 
 	gardenServer := server.New(*listenNetwork, *listenAddr, *containerGraceTime, backend, logger)
 

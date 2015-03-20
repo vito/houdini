@@ -18,8 +18,6 @@ type ProcessTracker interface {
 }
 
 type processTracker struct {
-	containerPath string
-
 	processes      map[uint32]*Process
 	nextProcessID  uint32
 	processesMutex *sync.RWMutex
@@ -33,10 +31,8 @@ func (e UnknownProcessError) Error() string {
 	return fmt.Sprintf("unknown process: %d", e.ProcessID)
 }
 
-func NewTracker(containerPath string) ProcessTracker {
+func NewTracker() ProcessTracker {
 	return &processTracker{
-		containerPath: containerPath,
-
 		processes:      make(map[uint32]*Process),
 		processesMutex: new(sync.RWMutex),
 
@@ -50,7 +46,7 @@ func (t *processTracker) Run(cmd *exec.Cmd, processIO garden.ProcessIO, tty *gar
 	processID := t.nextProcessID
 	t.nextProcessID++
 
-	process := NewProcess(processID, t.containerPath)
+	process := NewProcess(processID)
 
 	t.processes[processID] = process
 
@@ -94,7 +90,7 @@ func (t *processTracker) Attach(processID uint32, processIO garden.ProcessIO) (g
 func (t *processTracker) Restore(processID uint32) {
 	t.processesMutex.Lock()
 
-	process := NewProcess(processID, t.containerPath)
+	process := NewProcess(processID)
 
 	t.processes[processID] = process
 
