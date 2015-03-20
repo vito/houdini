@@ -2,7 +2,7 @@
 
 set -e -x
 
-export GOPATH=$PWD
+export GOPATH=$PWD/gopath
 export PATH=$PWD/bin:$PATH
 
 export DISTDIR=$PWD/dist
@@ -12,7 +12,8 @@ date +"%Y-%m-%d" > $DISTDIR/release-name
 
 cd $GOPATH/src/github.com/vito/houdini
 
-export GOPATH=$PWD/Godeps/_workspace:$GOPATH
+GOPATH=$PWD/Godeps_darwin/_workspace:$GOPATH GOOS=darwin GOARCH=amd64 \
+  go build -o $DISTDIR/artifacts/houdini_darwin_amd64 ./cmd/houdini
 
-GOOS=darwin GOARCH=amd64 go build -o $DISTDIR/artifacts/houdini_darwin_amd64 ./cmd/houdini
-GOOS=windows GOARCH=amd64 go build -o $DISTDIR/artifacts/houdini.exe ./cmd/houdini
+GOPATH=$PWD/Godeps_windows/_workspace:$GOPATH GOOS=windows GOARCH=amd64 \
+  go build -o $DISTDIR/artifacts/houdini.exe ./cmd/houdini

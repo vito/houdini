@@ -1,0 +1,171 @@
+import "Blobs.proto";
+import "Execution.proto";
+
+package contester.proto;
+option java_package = "org.stingray.contester.proto";
+
+message LocalEnvironment {
+    message Variable {
+        required string name = 1;
+        optional string value = 2;
+        optional bool expand = 3;
+    }
+
+    optional bool empty = 1;
+    repeated Variable variable = 2;
+};
+
+message LocalExecutionParameters {
+    optional string application_name = 1;
+    optional string command_line = 2;
+    optional string current_directory = 3;
+
+    optional uint64 time_limit_micros = 4;
+    optional uint64 memory_limit = 5;
+    optional bool check_idleness = 6;
+    optional LocalEnvironment environment = 7;
+    optional bool restrict_ui = 8;
+    optional bool no_job = 9;
+    optional uint32 process_limit = 10;
+    optional uint64 time_limit_hard_micros = 15;
+
+    optional RedirectParameters std_in = 12;
+    optional RedirectParameters std_out = 13;
+    optional RedirectParameters std_err = 14;
+
+    repeated string command_line_parameters = 16;
+
+    optional string sandbox_id = 17;
+};
+
+message LocalExecuteConnected {
+    optional LocalExecutionParameters first = 1;
+    optional LocalExecutionParameters second = 2;
+};
+
+message LocalExecutionResult {
+    optional ExecutionResultFlags flags = 1;
+    optional ExecutionResultTime time = 2;
+    optional uint64 memory = 3;
+    optional uint32 return_code = 4;
+    optional Blob std_out = 5;
+    optional Blob std_err = 6;
+    optional uint64 total_processes = 7;
+    optional int32 kill_signal = 8;
+    optional int32 stop_signal = 9;
+};
+
+message LocalExecuteConnectedResult {
+    optional LocalExecutionResult first = 1;
+    optional LocalExecutionResult second = 2;
+};
+
+message LocalExecution {
+    required LocalExecutionParameters parameters = 1;
+    optional LocalExecutionResult result = 2;
+};
+
+message BinaryTypeRequest {
+    optional string pathname = 1;
+};
+
+message BinaryTypeResponse {
+    enum Win32BinaryType {
+        SCS_32BIT_BINARY = 0;
+        SCS_DOS_BINARY = 1;
+        SCS_WOW_BINARY = 2;
+        SCS_PIF_BINARY = 3;
+        SCS_POSIX_BINARY = 4;
+        SCS_OS216_BINARY = 5;
+        SCS_64BIT_BINARY = 6;
+    };
+
+    optional bool failure = 1;
+    optional Win32BinaryType result = 2;
+};
+
+message ClearSandboxRequest {
+    optional string sandbox = 1;
+};
+
+message IdentifyRequest {
+    optional string contester_id = 1;
+    optional string mongo_host = 2;
+    optional string mongo_db = 3;
+};
+
+message SandboxLocations {
+    optional string compile = 1;
+    optional string run = 2;
+}
+
+message IdentifyResponse {
+    optional string invoker_id = 1;
+    repeated SandboxLocations sandboxes = 2;
+    optional LocalEnvironment environment = 3;
+    optional string platform = 4;
+    optional string path_separator = 5;
+    repeated string disks = 6;
+    repeated string programFiles = 7;
+};
+
+// Glob and Stat
+
+message FileStat {
+    optional string name = 1;
+    optional bool is_directory = 2;
+    optional uint64 size = 3;
+    optional string checksum = 4;
+};
+
+message StatRequest {
+    repeated string name = 1;
+    optional string sandbox_id = 2;
+    optional bool expand = 3;
+    optional bool calculate_checksum = 4;
+};
+
+message FileStats {
+    repeated FileStat entries = 1;
+};
+
+// Direct put
+// Use FileBlob
+
+// Direct get
+
+message GetRequest {
+    required string name = 1;
+};
+// returns FileBlob
+
+message EmptyMessage {};
+
+// Gridfs foo
+
+message CopyOperation {
+    optional string local_file_name = 1;
+    optional string remote_location = 2;
+    optional bool upload = 3;
+    optional string checksum = 4;
+    optional string module_type = 5;
+};
+
+message CopyOperations {
+    repeated CopyOperation entries = 1;
+    optional string sandbox_id = 2;
+};
+
+message NamePair {
+    required string source = 1;
+    required string destination = 2;
+};
+
+message RepeatedNamePairEntries {
+    repeated NamePair entries = 1;
+    optional string sandbox_id = 2;
+};
+
+message RepeatedStringEntries {
+    repeated string entries = 1;
+};
