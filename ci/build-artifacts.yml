@@ -1,0 +1,11 @@
+---
+platform: linux
+
+image: docker:///golang:1.4.2-cross
+
+inputs:
+  - name: houdini
+    path: gopath/src/github.com/vito/houdini
+
+run:
+  path: ci/build-artifacts

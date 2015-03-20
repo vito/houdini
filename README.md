@@ -1,19 +1,15 @@
-# THE PLAN
+# houdini: the world's worst containerizer
 
-* each container has its own working directory
+Houdini is effectively a no-op Garden backend portable to esoteric platforms
+like Darwin and Windows.
 
-* stream in/out are relative to this directory
+For a Linux Garden backend, please use [Garden
+Linux](https://github.com/cloudfoundry-incubator/garden-linux) instead.
 
-* running processes are relative to this directory
+Houdini makes no attempt to isolate containers from each other. It puts them
+in a working directory, and hopes for the best.
 
-* containers are not isolated beyond that
-
-* don't use this in a multitentant environment
-    * seriously
-
-* when a container is stopped or destroyed, all of its processes are killed
-
-* does not implement snapshotting (yet?)
-
-* limits and most other Garden calls are not supported (e.g. networking
-  configuration)
+On Windows, it will at least use [Job
+Objects](https://msdn.microsoft.com/en-us/library/windows/desktop/ms684161%28v=vs.85%29.aspx)
+to ensure processes are fully cleaned up. On OS X, there are basically no
+good ways to do this, so it doesn't bother.
