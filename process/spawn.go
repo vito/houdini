@@ -17,12 +17,18 @@ func spawn(cmd *exec.Cmd, ttySpec *garden.TTYSpec, stdout io.Writer, stderr io.W
 	var stdin io.WriteCloser
 	var err error
 
+	var processPty *os.File
+
 	if ttySpec != nil {
 		pty, tty, err := pty.Open()
 		if err != nil {
 			return nil, nil, err
 		}
 
+		// close our end of the tty after the process has spawned
+		defer tty.Close()
+
+		processPty = pty
 		stdin = pty
 
 		windowColumns := 80
@@ -55,12 +61,14 @@ func spawn(cmd *exec.Cmd, ttySpec *garden.TTYSpec, stdout io.Writer, stderr io.W
 	}
 
 	return &groupProcess{
-		process: cmd.Process,
+		process:    cmd.Process,
+		processPty: processPty,
 	}, stdin, nil
 }
 
 type groupProcess struct {
-	process *os.Process
+	process    *os.Process
+	processPty *os.File
 }
 
 func (proc *groupProcess) Signal(signal garden.Signal) error {
@@ -83,4 +91,12 @@ func (proc *groupProcess) Wait() (int, error) {
 	}
 
 	return state.Sys().(syscall.WaitStatus).ExitStatus(), nil
+}
+
+func (process *groupProcess) SetWindowSize(size garden.WindowSize) error {
+	if process.processPty != nil {
+		return ptyutil.SetWinSize(process.processPty, size.Columns, size.Rows)
+	}
+
+	return nil
 }

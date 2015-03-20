@@ -192,6 +192,10 @@ func (process *jobProcess) Wait() (int, error) {
 	return int(ec), nil
 }
 
+func (process *jobProcess) SetWindowSize(garden.WindowSize) error {
+	return nil
+}
+
 func makeCmdLine(args []string) string {
 	var s string
 	for _, v := range args {

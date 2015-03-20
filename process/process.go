@@ -10,17 +10,15 @@ import (
 type process interface {
 	Signal(garden.Signal) error
 	Wait() (int, error)
+	SetWindowSize(garden.WindowSize) error
 }
 
 type Process struct {
 	id uint32
 
-	runningLink *sync.Once
-
-	linked  chan struct{}
 	process process
 
-	exited     chan struct{}
+	waiting    *sync.Once
 	exitStatus int
 	exitErr    error
 
@@ -33,11 +31,7 @@ func NewProcess(id uint32) *Process {
 	return &Process{
 		id: id,
 
-		runningLink: &sync.Once{},
-
-		linked: make(chan struct{}),
-
-		exited: make(chan struct{}),
+		waiting: &sync.Once{},
 
 		stdin:  &faninWriter{hasSink: make(chan struct{})},
 		stdout: &fanoutWriter{},
@@ -50,42 +44,35 @@ func (p *Process) ID() uint32 {
 }
 
 func (p *Process) Wait() (int, error) {
-	<-p.exited
+	p.waiting.Do(func() {
+		p.exitStatus, p.exitErr = p.process.Wait()
+
+		// don't leak stdin pipe
+		p.stdin.Close()
+	})
+
 	return p.exitStatus, p.exitErr
 }
 
 func (p *Process) SetTTY(tty garden.TTYSpec) error {
-	<-p.linked
-
-	// if tty.WindowSize != nil {
-	// 	return p.link.SetWindowSize(tty.WindowSize.Columns, tty.WindowSize.Rows)
-	// }
+	if tty.WindowSize != nil {
+		return p.process.SetWindowSize(*tty.WindowSize)
+	}
 
 	return nil
 }
 
-func (p *Process) Spawn(cmd *exec.Cmd, tty *garden.TTYSpec) (ready, active chan error) {
-	ready = make(chan error, 1)
-	active = make(chan error, 1)
-
+func (p *Process) Start(cmd *exec.Cmd, tty *garden.TTYSpec) error {
 	process, stdin, err := spawn(cmd, tty, p.stdout, p.stderr)
 	if err != nil {
-		ready <- err
-		return
+		return err
 	}
 
 	p.stdin.AddSink(stdin)
 
 	p.process = process
 
-	ready <- nil
-	active <- nil
-
-	return
-}
-
-func (p *Process) Link() {
-	p.runningLink.Do(p.runLinker)
+	return nil
 }
 
 func (p *Process) Attach(processIO garden.ProcessIO) {
@@ -103,25 +90,5 @@ func (p *Process) Attach(processIO garden.ProcessIO) {
 }
 
 func (p *Process) Signal(signal garden.Signal) error {
-	select {
-	case <-p.linked:
-		return p.process.Signal(signal)
-	default:
-		return nil
-	}
-}
-
-func (p *Process) runLinker() {
-	close(p.linked)
-
-	p.completed(p.process.Wait())
-
-	// don't leak stdin pipe
-	p.stdin.Close()
-}
-
-func (p *Process) completed(exitStatus int, err error) {
-	p.exitStatus = exitStatus
-	p.exitErr = err
-	close(p.exited)
+	return p.process.Signal(signal)
 }

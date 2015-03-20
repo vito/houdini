@@ -52,18 +52,9 @@ func (t *processTracker) Run(cmd *exec.Cmd, processIO garden.ProcessIO, tty *gar
 
 	t.processesMutex.Unlock()
 
-	ready, active := process.Spawn(cmd, tty)
-
-	err := <-ready
-	if err != nil {
-		return nil, err
-	}
-
 	process.Attach(processIO)
 
-	go t.link(processID)
-
-	err = <-active
+	err := process.Start(cmd, tty)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +73,7 @@ func (t *processTracker) Attach(processID uint32, processIO garden.ProcessIO) (g
 
 	process.Attach(processIO)
 
-	go t.link(processID)
+	go t.waitAndReap(processID)
 
 	return process, nil
 }
@@ -98,7 +89,7 @@ func (t *processTracker) Restore(processID uint32) {
 		t.nextProcessID = processID + 1
 	}
 
-	go t.link(processID)
+	go t.waitAndReap(processID)
 
 	t.processesMutex.Unlock()
 }
@@ -163,7 +154,7 @@ func (t *processTracker) Stop(kill bool) error {
 	return nil
 }
 
-func (t *processTracker) link(processID uint32) {
+func (t *processTracker) waitAndReap(processID uint32) {
 	t.processesMutex.RLock()
 	process, ok := t.processes[processID]
 	t.processesMutex.RUnlock()
@@ -172,11 +163,9 @@ func (t *processTracker) link(processID uint32) {
 		return
 	}
 
-	defer t.unregister(processID)
+	process.Wait()
 
-	process.Link()
-
-	return
+	t.unregister(processID)
 }
 
 func (t *processTracker) unregister(processID uint32) {
