@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/cloudfoundry-incubator/garden/server"
 	"github.com/pivotal-golang/lager"
@@ -26,7 +27,7 @@ var listenAddr = flag.String(
 
 var containerGraceTime = flag.Duration(
 	"containerGraceTime",
-	0,
+	5*time.Minute,
 	"time after which to destroy idle containers",
 )
 
