@@ -9,3 +9,12 @@ dist/skeleton/bin:
 
 dist/skeleton/workdir:
 	mkdir -p dist/skeleton/workdir
+
+clean:
+	rm -rf dist
+	rm -rf Godeps_windows
+	rm -rf Godeps_darwin
+
+deps:
+	GOOS=windows godep save ./... && mv Godeps Godeps_windows
+	GOOS=darwin godep save ./... && mv Godeps Godeps_darwin
