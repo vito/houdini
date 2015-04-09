@@ -866,11 +866,13 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err, hLog)
 		return
 	}
-
 	hLog.Info("spawned", lager.Data{
 		"spec": request,
 		"id":   process.ID(),
 	})
+
+	streamID := s.streamer.stream(stdout, stderr)
+	defer s.streamer.stop(streamID)
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
@@ -886,11 +888,12 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
+		StreamID:  streamID,
 	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
-	s.streamProcess(hLog, conn, process, stdout, stderr, stdinW)
+	s.streamProcess(hLog, conn, process, stderr, stdinW)
 }
 
 func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -943,6 +946,9 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 		"id": process.ID(),
 	})
 
+	streamID := s.streamer.stream(stdout, stderr)
+	defer s.streamer.stop(streamID)
+
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 
@@ -955,9 +961,15 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
+	transport.WriteMessage(conn, &transport.ProcessPayload{
+		ProcessID: process.ID(),
+		StreamID:  streamID,
+	})
+
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
-	s.streamProcess(hLog, conn, process, stdout, stderr, stdinW)
+	s.streamProcess(hLog, conn, process, stderr, stdinW)
+
 }
 
 func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
@@ -1110,7 +1122,7 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 	}
 }
 
-func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stdout <-chan []byte, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
+func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
 	statusCh := make(chan int, 1)
 	errCh := make(chan error, 1)
 
@@ -1132,30 +1144,10 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 		}
 	}()
 
-	stdoutSource := transport.Stdout
-	stderrSource := transport.Stderr
-
 	for {
 		select {
-		case data := <-stdout:
-			d := string(data)
-			transport.WriteMessage(conn, &transport.ProcessPayload{
-				ProcessID: process.ID(),
-				Source:    &stdoutSource,
-				Data:      &d,
-			})
-
-		case data := <-stderr:
-			d := string(data)
-			transport.WriteMessage(conn, &transport.ProcessPayload{
-				ProcessID: process.ID(),
-				Source:    &stderrSource,
-				Data:      &d,
-			})
 
 		case status := <-statusCh:
-			flushProcess(conn, process, stdout, stderr)
-
 			transport.WriteMessage(conn, &transport.ProcessPayload{
 				ProcessID:  process.ID(),
 				ExitStatus: &status,
@@ -1165,8 +1157,6 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 			return
 
 		case err := <-errCh:
-			flushProcess(conn, process, stdout, stderr)
-
 			e := err.Error()
 			transport.WriteMessage(conn, &transport.ProcessPayload{
 				ProcessID: process.ID(),
@@ -1181,34 +1171,6 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 				"id": process.ID(),
 			})
 
-			return
-		}
-	}
-}
-
-func flushProcess(conn net.Conn, process garden.Process, stdout <-chan []byte, stderr <-chan []byte) {
-	stdoutSource := transport.Stdout
-	stderrSource := transport.Stderr
-
-	for {
-		select {
-		case data := <-stdout:
-			d := string(data)
-			transport.WriteMessage(conn, &transport.ProcessPayload{
-				ProcessID: process.ID(),
-				Source:    &stdoutSource,
-				Data:      &d,
-			})
-
-		case data := <-stderr:
-			d := string(data)
-			transport.WriteMessage(conn, &transport.ProcessPayload{
-				ProcessID: process.ID(),
-				Source:    &stderrSource,
-				Data:      &d,
-			})
-
-		default:
 			return
 		}
 	}

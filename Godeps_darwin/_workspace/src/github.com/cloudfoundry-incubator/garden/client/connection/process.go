@@ -9,6 +9,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/transport"
+	"github.com/pivotal-golang/lager"
 )
 
 type process struct {
@@ -20,6 +21,11 @@ type process struct {
 	exitStatus int
 	exitErr    error
 	doneL      *sync.Cond
+}
+
+type attacher interface {
+	attach(stdout, stderr io.Writer) error
+	wait()
 }
 
 func newProcess(id uint32, netConn net.Conn) *process {
@@ -69,54 +75,46 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.Broadcast()
 }
 
-func (p *process) streamPayloads(decoder *json.Decoder, processIO garden.ProcessIO) {
+func (p *process) streamPayloads(log lager.Logger, decoder *json.Decoder, stream attacher, processIO garden.ProcessIO) {
 	defer p.stream.Close()
 
 	if processIO.Stdin != nil {
 		writer := &stdinWriter{p.stream}
 
 		go func() {
-			_, err := io.Copy(writer, processIO.Stdin)
-			if err == nil {
+			if _, err := io.Copy(writer, processIO.Stdin); err == nil {
 				writer.Close()
 			} else {
-				p.stream.Close()
+				log.Error("streaming-stdin-payload", err)
 			}
 		}()
 	}
 
+	err := stream.attach(processIO.Stdout, processIO.Stderr)
+	if err != nil {
+		log.Error("connection: Failed to attach: ", err)
+		return
+	}
+
 	for {
 		payload := &transport.ProcessPayload{}
-
 		err := decoder.Decode(payload)
 		if err != nil {
+			stream.wait()
 			p.exited(0, err)
 			break
 		}
 
 		if payload.Error != nil {
+			stream.wait()
 			p.exited(0, fmt.Errorf("process error: %s", *payload.Error))
 			break
 		}
 
 		if payload.ExitStatus != nil {
+			stream.wait()
 			p.exited(int(*payload.ExitStatus), nil)
 			break
-		}
-
-		if payload.Source == nil {
-			continue
-		}
-
-		switch *payload.Source {
-		case transport.Stdout:
-			if processIO.Stdout != nil {
-				processIO.Stdout.Write([]byte(*payload.Data))
-			}
-		case transport.Stderr:
-			if processIO.Stderr != nil {
-				processIO.Stderr.Write([]byte(*payload.Data))
-			}
 		}
 	}
 }

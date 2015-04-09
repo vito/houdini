@@ -18,6 +18,9 @@ const (
 	StreamIn  = "StreamIn"
 	StreamOut = "StreamOut"
 
+	Stdout = "Stdout"
+	Stderr = "Stderr"
+
 	LimitBandwidth         = "LimitBandwidth"
 	CurrentBandwidthLimits = "CurrentBandwidthLimits"
 
@@ -77,6 +80,8 @@ var Routes = rata.Routes{
 	{Path: "/containers/:handle/net/in", Method: "POST", Name: NetIn},
 	{Path: "/containers/:handle/net/out", Method: "POST", Name: NetOut},
 
+	{Path: "/containers/:handle/processes/:pid/attaches/:streamid/stdout", Method: "GET", Name: Stdout},
+	{Path: "/containers/:handle/processes/:pid/attaches/:streamid/stderr", Method: "GET", Name: Stderr},
 	{Path: "/containers/:handle/processes", Method: "POST", Name: Run},
 	{Path: "/containers/:handle/processes/:pid", Method: "GET", Name: Attach},
 

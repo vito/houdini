@@ -418,7 +418,7 @@ var _ = Describe("When a client connects", func() {
 					Eventually(serverBackend.DestroyCallCount, 2*graceTime).Should(Equal(1))
 					Ω(serverBackend.DestroyArgsForCall(0)).Should(Equal(container.Handle()))
 
-					Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 20*time.Millisecond))
+					Ω(time.Since(before)).Should(BeNumerically("~", graceTime, 30*time.Millisecond))
 				})
 			})
 		}
@@ -1699,14 +1699,30 @@ var _ = Describe("When a client connects", func() {
 
 			Describe("when the server is shut down while there is a process running", func() {
 				BeforeEach(func() {
-					process := &fakes.FakeProcess{
-						WaitStub: func() (int, error) {
+					fakeContainer.RunStub = func(spec garden.ProcessSpec, io garden.ProcessIO) (garden.Process, error) {
+						writing := new(sync.WaitGroup)
+						writing.Add(1)
+
+						go func() {
+							defer writing.Done()
+							defer GinkgoRecover()
+
+							for {
+								_, err := fmt.Fprintf(io.Stdout, "stdout data")
+								Ω(err).ShouldNot(HaveOccurred())
+							}
+						}()
+
+						process := new(fakes.FakeProcess)
+						process.IDReturns(42)
+
+						process.WaitStub = func() (int, error) {
 							select {}
 							return 0, nil
-						},
+						}
+
+						return process, nil
 					}
-					process.IDReturns(42)
-					fakeContainer.RunReturns(process, nil)
 				})
 
 				It("does not close the process's stdin", func() {
