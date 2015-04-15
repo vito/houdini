@@ -42,15 +42,12 @@ func NewTracker() ProcessTracker {
 
 func (t *processTracker) Run(cmd *exec.Cmd, processIO garden.ProcessIO, tty *garden.TTYSpec) (garden.Process, error) {
 	t.processesMutex.Lock()
+	defer t.processesMutex.Unlock()
 
 	processID := t.nextProcessID
 	t.nextProcessID++
 
 	process := NewProcess(processID)
-
-	t.processes[processID] = process
-
-	t.processesMutex.Unlock()
 
 	process.Attach(processIO)
 
@@ -58,6 +55,8 @@ func (t *processTracker) Run(cmd *exec.Cmd, processIO garden.ProcessIO, tty *gar
 	if err != nil {
 		return nil, err
 	}
+
+	t.processes[processID] = process
 
 	return process, nil
 }
