@@ -22,7 +22,7 @@ type Backend struct {
 	containers  map[string]*container
 	containersL sync.RWMutex
 
-	containerNum uint64
+	containerNum uint32
 }
 
 func NewBackend(containersDir string) *Backend {
@@ -31,7 +31,7 @@ func NewBackend(containersDir string) *Backend {
 
 		containers: make(map[string]*container),
 
-		containerNum: uint64(time.Now().UnixNano()),
+		containerNum: uint32(time.Now().UnixNano()),
 	}
 }
 
@@ -146,7 +146,7 @@ func (backend *Backend) Lookup(handle string) (garden.Container, error) {
 }
 
 func (backend *Backend) generateContainerID() string {
-	containerNum := atomic.AddUint64(&backend.containerNum, 1)
+	containerNum := atomic.AddUint32(&backend.containerNum, 1)
 
 	containerID := []byte{}
 
@@ -154,7 +154,7 @@ func (backend *Backend) generateContainerID() string {
 	for i = 0; i < 11; i++ {
 		containerID = strconv.AppendUint(
 			containerID,
-			(containerNum>>(55-(i+1)*5))&31,
+			(uint64(containerNum)>>(55-(i+1)*5))&31,
 			32,
 		)
 	}
