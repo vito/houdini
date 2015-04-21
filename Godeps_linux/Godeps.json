@@ -1,0 +1,35 @@
+{
+	"ImportPath": "github.com/vito/houdini",
+	"GoVersion": "go1.4.2",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/bmizerany/pat",
+			"Rev": "b8a35001b773c267eb260a691f4e5499a3531600"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/garden",
+			"Comment": "go-wshd-720-gdd6b2d5",
+			"Rev": "dd6b2d5f923feec84a3e144805ce65e302af75ac"
+		},
+		{
+			"ImportPath": "github.com/kr/pty",
+			"Comment": "release.r56-25-g05017fc",
+			"Rev": "05017fcccf23c823bfdea560dcc958a136e54fb7"
+		},
+		{
+			"ImportPath": "github.com/pivotal-golang/lager",
+			"Rev": "077a951277738ee13348913e97bfde708d51bfd0"
+		},
+		{
+			"ImportPath": "github.com/pkg/term/termios",
+			"Rev": "2266b46824adef0c4977cc4058b8052124f77c20"
+		},
+		{
+			"ImportPath": "github.com/tedsuo/rata",
+			"Rev": "b15ebd8bd97ae9202eb00c076d59b2f2824bce37"
+		}
+	]
+}
