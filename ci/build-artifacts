@@ -21,8 +21,8 @@ GOPATH=$PWD/Godeps_windows/_workspace:$GOPATH GOOS=windows GOARCH=amd64 \
 GOPATH=$PWD/Godeps_windows/_workspace:$GOPATH GOOS=windows GOARCH=386 \
   go build -o $DISTDIR/artifacts/houdini_windows_386.exe ./cmd/houdini
 
-GOPATH=$PWD/Godeps_windows/_workspace:$GOPATH GOOS=linux GOARCH=amd64 \
+GOPATH=$PWD/Godeps_linux/_workspace:$GOPATH GOOS=linux GOARCH=amd64 \
   go build -o $DISTDIR/artifacts/houdini_linux_amd64 ./cmd/houdini
 
-GOPATH=$PWD/Godeps_windows/_workspace:$GOPATH GOOS=linux GOARCH=386 \
+GOPATH=$PWD/Godeps_linux/_workspace:$GOPATH GOOS=linux GOARCH=386 \
   go build -o $DISTDIR/artifacts/houdini_linux_386 ./cmd/houdini
