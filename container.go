@@ -98,28 +98,47 @@ func (container *container) StreamIn(dstPath string, tarStream io.Reader) error 
 
 func (container *container) StreamOut(srcPath string) (io.ReadCloser, error) {
 	absoluteSource := filepath.Join(container.workDir, filepath.FromSlash(srcPath))
-	workingDir := filepath.Dir(absoluteSource)
-	compressArg := filepath.Base(absoluteSource)
+
 	if strings.HasSuffix(srcPath, "/") {
-		workingDir = absoluteSource
-		compressArg = "."
+		absoluteSource += "."
 	}
 
-	tarCmd := exec.Command("tar", "cf", "-", compressArg, "-C", workingDir)
+	workingDir := filepath.Dir(absoluteSource)
+	compressArg := filepath.Base(absoluteSource)
+
+	tarCmd := exec.Command("tar", "cf", "-", compressArg)
+	tarCmd.Dir = workingDir
 
 	out, err := tarCmd.StdoutPipe()
 	if err != nil {
 		return nil, err
 	}
 
+	tarCmd.Stderr = os.Stderr
+
 	err = tarCmd.Start()
 	if err != nil {
 		return nil, err
 	}
 
-	go tarCmd.Wait()
+	return waitCloser{
+		ReadCloser: out,
+		proc:       tarCmd,
+	}, nil
+}
 
-	return out, nil
+type waitCloser struct {
+	io.ReadCloser
+	proc *exec.Cmd
+}
+
+func (c waitCloser) Close() error {
+	err := c.Close()
+	if err != nil {
+		return err
+	}
+
+	return c.proc.Wait()
 }
 
 func (container *container) LimitBandwidth(limits garden.BandwidthLimits) error { return nil }
