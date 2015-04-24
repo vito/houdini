@@ -100,7 +100,8 @@ func (container *container) StreamOut(srcPath string) (io.ReadCloser, error) {
 	absoluteSource := filepath.Join(container.workDir, filepath.FromSlash(srcPath))
 
 	if strings.HasSuffix(srcPath, "/") {
-		absoluteSource += "."
+		// filepath.Join strips trailing slash, so add it back
+		absoluteSource += "/."
 	}
 
 	workingDir := filepath.Dir(absoluteSource)
