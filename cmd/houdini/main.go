@@ -2,6 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -23,6 +26,18 @@ var listenAddr = flag.String(
 	"listenAddr",
 	"0.0.0.0:7777",
 	"address to listen on",
+)
+
+var debugListenAddress = flag.String(
+	"debugListenAddress",
+	"127.0.0.1",
+	"address for the pprof debugger listen on",
+)
+
+var debugListenPort = flag.Int(
+	"debugListenPort",
+	7776,
+	"port for the pprof debugger to listen on",
 )
 
 var containerGraceTime = flag.Duration(
@@ -71,6 +86,13 @@ func main() {
 	}()
 
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
+	debugListenAddr := fmt.Sprintf("%s:%d", *debugListenAddress, *debugListenPort)
+
+	err = http.ListenAndServe(debugListenAddr, nil)
+	if err != nil {
+		logger.Fatal("failed-to-start-debug-server", err)
+	}
 
 	select {}
 }
