@@ -173,6 +173,25 @@ var _ = Describe("When a client connects", func() {
 					"prop-b": "val-b",
 				},
 				Env: []string{"env1=env1Value", "env2=env2Value"},
+				Limits: garden.Limits{
+					Bandwidth: garden.BandwidthLimits{
+						RateInBytesPerSecond:      42,
+						BurstRateInBytesPerSecond: 68,
+					},
+					Disk: garden.DiskLimits{
+						InodeSoft: 1,
+						InodeHard: 2,
+						ByteSoft:  3,
+						ByteHard:  4,
+						Scope:     garden.DiskLimitScopeExclusive,
+					},
+					Memory: garden.MemoryLimits{
+						LimitInBytes: 1024,
+					},
+					CPU: garden.CPULimits{
+						LimitInShares: 5,
+					},
+				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -194,6 +213,25 @@ var _ = Describe("When a client connects", func() {
 					"prop-b": "val-b",
 				},
 				Env: []string{"env1=env1Value", "env2=env2Value"},
+				Limits: garden.Limits{
+					Bandwidth: garden.BandwidthLimits{
+						RateInBytesPerSecond:      42,
+						BurstRateInBytesPerSecond: 68,
+					},
+					Disk: garden.DiskLimits{
+						InodeSoft: 1,
+						InodeHard: 2,
+						ByteSoft:  3,
+						ByteHard:  4,
+						Scope:     garden.DiskLimitScopeExclusive,
+					},
+					Memory: garden.MemoryLimits{
+						LimitInBytes: 1024,
+					},
+					CPU: garden.CPULimits{
+						LimitInShares: 5,
+					},
+				},
 			}))
 		})
 
@@ -242,6 +280,27 @@ var _ = Describe("When a client connects", func() {
 					Handle: "some-handle",
 				})
 				Ω(err).Should(HaveOccurred())
+			})
+		})
+
+		Context("when creating the container fails with a ServiceUnavailableError", func() {
+			var err error
+
+			BeforeEach(func() {
+				serverBackend.CreateReturns(nil, garden.NewServiceUnavailableError("special error"))
+
+				_, err = apiClient.Create(garden.ContainerSpec{
+					Handle: "some-handle",
+				})
+			})
+
+			It("client returns an error with a well formed error msg", func() {
+				Ω(err).Should(MatchError("special error"))
+			})
+
+			It("client returns an error of type ServiceUnavailableError", func() {
+				_, ok := err.(*garden.ServiceUnavailableError)
+				Ω(ok).Should(BeTrue())
 			})
 		})
 	})
@@ -495,6 +554,7 @@ var _ = Describe("When a client connects", func() {
 					TotalInactiveFile:       26,
 					TotalActiveFile:         27,
 					TotalUnevictable:        28,
+					TotalUsageTowardLimit:   7, // TotalRss+(TotalCache-TotalInactiveFile)
 				},
 				CPUStat: garden.ContainerCPUStat{
 					Usage:  1,
@@ -502,8 +562,8 @@ var _ = Describe("When a client connects", func() {
 					System: 3,
 				},
 				DiskStat: garden.ContainerDiskStat{
-					BytesUsed:  1,
-					InodesUsed: 2,
+					TotalBytesUsed:  1,
+					TotalInodesUsed: 2,
 				},
 			}
 
@@ -550,34 +610,34 @@ var _ = Describe("When a client connects", func() {
 			Describe("getting all", func() {
 				Context("when getting the properties succeeds", func() {
 					BeforeEach(func() {
-						fakeContainer.GetPropertiesReturns(garden.Properties{"foo": "bar"}, nil)
+						fakeContainer.PropertiesReturns(garden.Properties{"foo": "bar"}, nil)
 					})
 
 					It("returns the properties from the container", func() {
-						value, err := container.GetProperties()
+						value, err := container.Properties()
 						Ω(err).ShouldNot(HaveOccurred())
 
 						Ω(value).Should(Equal(garden.Properties{"foo": "bar"}))
 					})
 
 					itResetsGraceTimeWhenHandling(func() {
-						_, err := container.GetProperties()
+						_, err := container.Properties()
 						Ω(err).ShouldNot(HaveOccurred())
 					})
 
 					itFailsWhenTheContainerIsNotFound(func() error {
-						_, err := container.GetProperties()
+						_, err := container.Properties()
 						return err
 					})
 				})
 
 				Context("when getting the properties fails", func() {
 					BeforeEach(func() {
-						fakeContainer.GetPropertiesReturns(nil, errors.New("o no"))
+						fakeContainer.PropertiesReturns(nil, errors.New("o no"))
 					})
 
 					It("returns an error", func() {
-						properties, err := container.GetProperties()
+						properties, err := container.Properties()
 						Ω(err).Should(HaveOccurred())
 						Ω(properties).Should(BeEmpty())
 					})
@@ -587,39 +647,39 @@ var _ = Describe("When a client connects", func() {
 			Describe("getting", func() {
 				Context("when getting the property succeeds", func() {
 					BeforeEach(func() {
-						fakeContainer.GetPropertyReturns("some-property-value", nil)
+						fakeContainer.PropertyReturns("some-property-value", nil)
 					})
 
 					It("returns the property from the container", func() {
-						value, err := container.GetProperty("some-property")
+						value, err := container.Property("some-property")
 						Ω(err).ShouldNot(HaveOccurred())
 
 						Ω(value).Should(Equal("some-property-value"))
 
-						Ω(fakeContainer.GetPropertyCallCount()).Should(Equal(1))
+						Ω(fakeContainer.PropertyCallCount()).Should(Equal(1))
 
-						name := fakeContainer.GetPropertyArgsForCall(0)
+						name := fakeContainer.PropertyArgsForCall(0)
 						Ω(name).Should(Equal("some-property"))
 					})
 
 					itResetsGraceTimeWhenHandling(func() {
-						_, err := container.GetProperty("some-property")
+						_, err := container.Property("some-property")
 						Ω(err).ShouldNot(HaveOccurred())
 					})
 
 					itFailsWhenTheContainerIsNotFound(func() error {
-						_, err := container.GetProperty("some-property")
+						_, err := container.Property("some-property")
 						return err
 					})
 				})
 
 				Context("when getting the property fails", func() {
 					BeforeEach(func() {
-						fakeContainer.GetPropertyReturns("", errors.New("oh no!"))
+						fakeContainer.PropertyReturns("", errors.New("oh no!"))
 					})
 
 					It("returns an error", func() {
-						value, err := container.GetProperty("some-property")
+						value, err := container.Property("some-property")
 						Ω(err).Should(HaveOccurred())
 						Ω(value).Should(BeZero())
 					})
@@ -708,20 +768,21 @@ var _ = Describe("When a client connects", func() {
 			It("streams the file in, waits for completion, and succeeds", func() {
 				data := bytes.NewBufferString("chunk-1;chunk-2;chunk-3;")
 
-				fakeContainer.StreamInStub = func(dest string, stream io.Reader) error {
-					Ω(dest).Should(Equal("/dst/path"))
-					Ω(ioutil.ReadAll(stream)).Should(Equal([]byte("chunk-1;chunk-2;chunk-3;")))
+				fakeContainer.StreamInStub = func(spec garden.StreamInSpec) error {
+					Ω(spec.Path).Should(Equal("/dst/path"))
+					Ω(spec.User).Should(Equal("frank"))
+					Ω(ioutil.ReadAll(spec.TarStream)).Should(Equal([]byte("chunk-1;chunk-2;chunk-3;")))
 					return nil
 				}
 
-				err := container.StreamIn("/dst/path", data)
+				err := container.StreamIn(garden.StreamInSpec{User: "frank", Path: "/dst/path", TarStream: data})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(fakeContainer.StreamInCallCount()).Should(Equal(1))
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
-				return container.StreamIn("/dst/path", nil)
+				return container.StreamIn(garden.StreamInSpec{Path: "/dst/path"})
 			})
 
 			Context("when copying in to the container fails", func() {
@@ -730,7 +791,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("fails", func() {
-					err := container.StreamIn("/dst/path", nil)
+					err := container.StreamIn(garden.StreamInSpec{User: "bob", Path: "/dst/path"})
 					Ω(err).Should(HaveOccurred())
 				})
 			})
@@ -748,7 +809,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			It("streams the bits out and succeeds", func() {
-				reader, err := container.StreamOut("/src/path")
+				reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(reader).ShouldNot(BeZero())
 
@@ -757,7 +818,7 @@ var _ = Describe("When a client connects", func() {
 
 				Ω(string(streamedContent)).Should(Equal("hello-world!"))
 
-				Ω(fakeContainer.StreamOutArgsForCall(0)).Should(Equal("/src/path"))
+				Ω(fakeContainer.StreamOutArgsForCall(0)).Should(Equal(garden.StreamOutSpec{User: "frank", Path: "/src/path"}))
 			})
 
 			Context("when the connection dies as we're streaming", func() {
@@ -770,7 +831,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("closes the backend's stream", func() {
-					reader, err := container.StreamOut("/src/path")
+					reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 					Ω(err).ShouldNot(HaveOccurred())
 
 					err = reader.Close()
@@ -781,7 +842,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			itResetsGraceTimeWhenHandling(func() {
-				reader, err := container.StreamOut("/src/path")
+				reader, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(reader).ShouldNot(BeZero())
 
@@ -790,7 +851,7 @@ var _ = Describe("When a client connects", func() {
 			})
 
 			itFailsWhenTheContainerIsNotFound(func() error {
-				_, err := container.StreamOut("/src/path")
+				_, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 				return err
 			})
 
@@ -800,7 +861,7 @@ var _ = Describe("When a client connects", func() {
 				})
 
 				It("returns an error", func() {
-					_, err := container.StreamOut("/src/path")
+					_, err := container.StreamOut(garden.StreamOutSpec{User: "frank", Path: "/src/path"})
 					Ω(err).Should(HaveOccurred())
 				})
 			})
@@ -948,9 +1009,6 @@ var _ = Describe("When a client connects", func() {
 
 			BeforeEach(func() {
 				setLimits = garden.DiskLimits{
-					BlockSoft: 111,
-					BlockHard: 222,
-
 					InodeSoft: 333,
 					InodeHard: 444,
 
@@ -989,9 +1047,6 @@ var _ = Describe("When a client connects", func() {
 
 		Describe("getting the current disk limits", func() {
 			currentLimits := garden.DiskLimits{
-				BlockSoft: 1111,
-				BlockHard: 2222,
-
 				InodeSoft: 3333,
 				InodeHard: 4444,
 
@@ -1414,6 +1469,28 @@ var _ = Describe("When a client connects", func() {
 					Ω(err).Should(MatchError("Oh noes!"))
 				})
 			})
+
+			Context("when a container is in error state", func() {
+				It("return single container error", func() {
+
+					expectedBulkInfo := map[string]garden.ContainerInfoEntry{
+						"error": garden.ContainerInfoEntry{
+							Err: garden.NewError("Oopps!"),
+						},
+						"success": garden.ContainerInfoEntry{
+							Info: garden.ContainerInfo{
+								State: "container2state",
+							},
+						},
+					}
+
+					serverBackend.BulkInfoReturns(expectedBulkInfo, nil)
+
+					bulkInfo, err := apiClient.BulkInfo(handles)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(bulkInfo).To(Equal(expectedBulkInfo))
+				})
+			})
 		})
 
 		Describe("BulkMetrics", func() {
@@ -1424,14 +1501,14 @@ var _ = Describe("When a client connects", func() {
 				"handle1": garden.ContainerMetricsEntry{
 					Metrics: garden.Metrics{
 						DiskStat: garden.ContainerDiskStat{
-							InodesUsed: 1,
+							TotalInodesUsed: 1,
 						},
 					},
 				},
 				"handle2": garden.ContainerMetricsEntry{
 					Metrics: garden.Metrics{
 						DiskStat: garden.ContainerDiskStat{
-							InodesUsed: 2,
+							TotalInodesUsed: 2,
 						},
 					},
 				},
@@ -1454,6 +1531,30 @@ var _ = Describe("When a client connects", func() {
 
 					_, err := apiClient.BulkMetrics(handles)
 					Ω(err).Should(MatchError("Oh noes!"))
+				})
+			})
+
+			Context("when a container has an error", func() {
+				It("returns the error for the container", func() {
+
+					errorBulkMetrics := map[string]garden.ContainerMetricsEntry{
+						"error": garden.ContainerMetricsEntry{
+							Err: garden.NewError("Oh noes!"),
+						},
+						"success": garden.ContainerMetricsEntry{
+							Metrics: garden.Metrics{
+								DiskStat: garden.ContainerDiskStat{
+									TotalInodesUsed: 1,
+								},
+							},
+						},
+					}
+
+					serverBackend.BulkMetricsReturns(errorBulkMetrics, nil)
+
+					bulkMetrics, err := apiClient.BulkMetrics(handles)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(bulkMetrics).To(Equal(errorBulkMetrics))
 				})
 			})
 		})
@@ -1593,7 +1694,7 @@ var _ = Describe("When a client connects", func() {
 					"FLAVOR=chocolate",
 					"TOPPINGS=sprinkles",
 				},
-				Privileged: true,
+				User: "root",
 				Limits: garden.ResourceLimits{
 					As:         uint64ptr(1),
 					Core:       uint64ptr(2),
@@ -1694,6 +1795,15 @@ var _ = Describe("When a client connects", func() {
 					status, err := process.Wait()
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(status).Should(Equal(123))
+				})
+			})
+
+			Context("when the backend returns an error", func() {
+
+				It("returns the error message", func() {
+					fakeContainer.RunReturns(nil, errors.New("o no!"))
+					_, err := container.Run(garden.ProcessSpec{}, garden.ProcessIO{})
+					Expect(err).To(MatchError(ContainSubstring("o no!")))
 				})
 			})
 

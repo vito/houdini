@@ -64,15 +64,15 @@ func (container *container) Stop(kill bool) error {
 
 func (container *container) Info() (garden.ContainerInfo, error) { return garden.ContainerInfo{}, nil }
 
-func (container *container) StreamIn(dstPath string, tarStream io.Reader) error {
-	finalDestination := filepath.Join(container.workDir, filepath.FromSlash(dstPath))
+func (container *container) StreamIn(spec garden.StreamInSpec) error {
+	finalDestination := filepath.Join(container.workDir, filepath.FromSlash(spec.Path))
 
 	err := os.MkdirAll(finalDestination, 0755)
 	if err != nil {
 		return err
 	}
 
-	tarReader := tar.NewReader(tarStream)
+	tarReader := tar.NewReader(spec.TarStream)
 
 	for {
 		hdr, err := tarReader.Next()
@@ -96,10 +96,10 @@ func (container *container) StreamIn(dstPath string, tarStream io.Reader) error 
 	return nil
 }
 
-func (container *container) StreamOut(srcPath string) (io.ReadCloser, error) {
-	absoluteSource := filepath.Join(container.workDir, filepath.FromSlash(srcPath))
+func (container *container) StreamOut(spec garden.StreamOutSpec) (io.ReadCloser, error) {
+	absoluteSource := filepath.Join(container.workDir, filepath.FromSlash(spec.Path))
 
-	if strings.HasSuffix(srcPath, "/") {
+	if strings.HasSuffix(spec.Path, "/") {
 		// filepath.Join strips trailing slash, so add it back
 		absoluteSource += "/."
 	}
@@ -186,7 +186,7 @@ func (container *container) Attach(processID uint32, processIO garden.ProcessIO)
 	return container.processTracker.Attach(processID, processIO)
 }
 
-func (container *container) GetProperty(name string) (string, error) {
+func (container *container) Property(name string) (string, error) {
 	container.propertiesL.RLock()
 	property, found := container.properties[name]
 	container.propertiesL.RUnlock()
@@ -220,7 +220,7 @@ func (container *container) RemoveProperty(name string) error {
 	return nil
 }
 
-func (container *container) GetProperties() (garden.Properties, error) {
+func (container *container) Properties() (garden.Properties, error) {
 	return container.currentProperties(), nil
 }
 

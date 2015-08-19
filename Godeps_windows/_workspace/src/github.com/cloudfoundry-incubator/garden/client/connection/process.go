@@ -1,43 +1,26 @@
 package connection
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"net"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/garden/transport"
-	"github.com/pivotal-golang/lager"
 )
 
 type process struct {
 	id uint32
 
-	stream *processStream
-
-	done       bool
-	exitStatus int
-	exitErr    error
-	doneL      *sync.Cond
+	processInputStream *processStream
+	done               bool
+	exitStatus         int
+	exitErr            error
+	doneL              *sync.Cond
 }
 
-type attacher interface {
-	attach(stdout, stderr io.Writer) error
-	wait()
-}
-
-func newProcess(id uint32, netConn net.Conn) *process {
+func newProcess(id uint32, processInputStream *processStream) *process {
 	return &process{
-		id: id,
-
-		stream: &processStream{
-			id:   id,
-			conn: netConn,
-		},
-
-		doneL: sync.NewCond(&sync.Mutex{}),
+		id:                 id,
+		processInputStream: processInputStream,
+		doneL:              sync.NewCond(&sync.Mutex{}),
 	}
 }
 
@@ -58,11 +41,11 @@ func (p *process) Wait() (int, error) {
 }
 
 func (p *process) SetTTY(tty garden.TTYSpec) error {
-	return p.stream.SetTTY(tty)
+	return p.processInputStream.SetTTY(tty)
 }
 
 func (p *process) Signal(signal garden.Signal) error {
-	return p.stream.Signal(signal)
+	return p.processInputStream.Signal(signal)
 }
 
 func (p *process) exited(exitStatus int, err error) {
@@ -73,48 +56,4 @@ func (p *process) exited(exitStatus int, err error) {
 	p.doneL.L.Unlock()
 
 	p.doneL.Broadcast()
-}
-
-func (p *process) streamPayloads(log lager.Logger, decoder *json.Decoder, stream attacher, processIO garden.ProcessIO) {
-	defer p.stream.Close()
-
-	if processIO.Stdin != nil {
-		writer := &stdinWriter{p.stream}
-
-		go func() {
-			if _, err := io.Copy(writer, processIO.Stdin); err == nil {
-				writer.Close()
-			} else {
-				log.Error("streaming-stdin-payload", err)
-			}
-		}()
-	}
-
-	err := stream.attach(processIO.Stdout, processIO.Stderr)
-	if err != nil {
-		log.Error("connection: Failed to attach: ", err)
-		return
-	}
-
-	for {
-		payload := &transport.ProcessPayload{}
-		err := decoder.Decode(payload)
-		if err != nil {
-			stream.wait()
-			p.exited(0, err)
-			break
-		}
-
-		if payload.Error != nil {
-			stream.wait()
-			p.exited(0, fmt.Errorf("process error: %s", *payload.Error))
-			break
-		}
-
-		if payload.ExitStatus != nil {
-			stream.wait()
-			p.exited(int(*payload.ExitStatus), nil)
-			break
-		}
-	}
 }

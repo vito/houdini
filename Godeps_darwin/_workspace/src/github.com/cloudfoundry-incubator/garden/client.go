@@ -69,6 +69,20 @@ func (err ContainerNotFoundError) Error() string {
 	return fmt.Sprintf("unknown handle: %s", err.Handle)
 }
 
+func NewServiceUnavailableError(cause string) error {
+	return &ServiceUnavailableError{
+		Cause: cause,
+	}
+}
+
+type ServiceUnavailableError struct {
+	Cause string
+}
+
+func (err *ServiceUnavailableError) Error() string {
+	return err.Cause
+}
+
 // ContainerSpec specifies the parameters for creating a container. All parameters are optional.
 type ContainerSpec struct {
 
@@ -151,6 +165,16 @@ type ContainerSpec struct {
 	// is the same as the root user in the host. Otherwise, the container has a user namespace and the root
 	// user in the container is mapped to a non-root user in the host. Defaults to false.
 	Privileged bool `json:"privileged,omitempty"`
+
+	// Limits to be applied to the newly created container.
+	Limits Limits `json:"limits,omitempty"`
+}
+
+type Limits struct {
+	Bandwidth BandwidthLimits `json:"bandwidth_limits,omitempty"`
+	CPU       CPULimits       `json:"cpu_limits,omitempty"`
+	Disk      DiskLimits      `json:"disk_limits,omitempty"`
+	Memory    MemoryLimits    `json:"memory_limits,omitempty"`
 }
 
 // BindMount specifies parameters for a single mount point.

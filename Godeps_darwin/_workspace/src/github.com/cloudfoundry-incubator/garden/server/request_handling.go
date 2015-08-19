@@ -182,10 +182,12 @@ func (s *GardenServer) handleStop(w http.ResponseWriter, r *http.Request) {
 func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	user := r.URL.Query().Get("user")
 	dstPath := r.URL.Query().Get("destination")
 
 	hLog := s.logger.Session("stream-in", lager.Data{
 		"handle":      handle,
+		"user":        user,
 		"destination": dstPath,
 	})
 
@@ -200,7 +202,11 @@ func (s *GardenServer) handleStreamIn(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Debug("streaming-in")
 
-	err = container.StreamIn(dstPath, r.Body)
+	err = container.StreamIn(garden.StreamInSpec{
+		User:      user,
+		Path:      dstPath,
+		TarStream: r.Body,
+	})
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -218,10 +224,12 @@ func (s *GardenServer) writeSuccess(w http.ResponseWriter) {
 func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
+	user := r.URL.Query().Get("user")
 	srcPath := r.URL.Query().Get("source")
 
 	hLog := s.logger.Session("stream-out", lager.Data{
 		"handle": handle,
+		"user":   user,
 		"source": srcPath,
 	})
 
@@ -236,7 +244,10 @@ func (s *GardenServer) handleStreamOut(w http.ResponseWriter, r *http.Request) {
 
 	hLog.Debug("streaming-out")
 
-	reader, err := container.StreamOut(srcPath)
+	reader, err := container.StreamOut(garden.StreamOutSpec{
+		User: user,
+		Path: srcPath,
+	})
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -424,8 +435,7 @@ func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
 	}
 
 	settingLimit := false
-	if request.BlockSoft > 0 || request.BlockHard > 0 ||
-		request.InodeSoft > 0 || request.InodeHard > 0 ||
+	if request.InodeSoft > 0 || request.InodeHard > 0 ||
 		request.ByteSoft > 0 || request.ByteHard > 0 {
 		settingLimit = true
 	}
@@ -682,7 +692,7 @@ func (s *GardenServer) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, metrics)
 }
 
-func (s *GardenServer) handleGetProperties(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleProperties(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
 	hLog := s.logger.Session("get-properties", lager.Data{
@@ -698,7 +708,7 @@ func (s *GardenServer) handleGetProperties(w http.ResponseWriter, r *http.Reques
 	s.bomberman.Pause(container.Handle())
 	defer s.bomberman.Unpause(container.Handle())
 
-	properties, err := container.GetProperties()
+	properties, err := container.Properties()
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -709,7 +719,7 @@ func (s *GardenServer) handleGetProperties(w http.ResponseWriter, r *http.Reques
 	s.writeResponse(w, properties)
 }
 
-func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request) {
+func (s *GardenServer) handleProperty(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 	key := r.FormValue(":key")
 
@@ -730,7 +740,7 @@ func (s *GardenServer) handleGetProperty(w http.ResponseWriter, r *http.Request)
 		"key": key,
 	})
 
-	value, err := container.GetProperty(key)
+	value, err := container.Property(key)
 	if err != nil {
 		s.writeError(w, err, hLog)
 		return
@@ -871,8 +881,8 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		"id":   process.ID(),
 	})
 
-	streamID := s.streamer.stream(stdout, stderr)
-	defer s.streamer.stop(streamID)
+	streamID := s.streamer.Stream(stdout, stderr)
+	defer s.streamer.Stop(streamID)
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
@@ -888,12 +898,12 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
-		StreamID:  streamID,
+		StreamID:  string(streamID),
 	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
-	s.streamProcess(hLog, conn, process, stderr, stdinW)
+	s.streamProcess(hLog, conn, process, stdinW)
 }
 
 func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -946,8 +956,8 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 		"id": process.ID(),
 	})
 
-	streamID := s.streamer.stream(stdout, stderr)
-	defer s.streamer.stop(streamID)
+	streamID := s.streamer.Stream(stdout, stderr)
+	defer s.streamer.Stop(streamID)
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -963,12 +973,12 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 
 	transport.WriteMessage(conn, &transport.ProcessPayload{
 		ProcessID: process.ID(),
-		StreamID:  streamID,
+		StreamID:  string(streamID),
 	})
 
 	go s.streamInput(json.NewDecoder(br), stdinW, process)
 
-	s.streamProcess(hLog, conn, process, stderr, stdinW)
+	s.streamProcess(hLog, conn, process, stdinW)
 
 }
 
@@ -1043,7 +1053,9 @@ func (s *GardenServer) writeError(w http.ResponseWriter, err error, logger lager
 	logger.Error("failed", err)
 
 	statusCode := http.StatusInternalServerError
-	if _, ok := err.(garden.ContainerNotFoundError); ok {
+	if _, ok := err.(*garden.ServiceUnavailableError); ok {
+		statusCode = http.StatusServiceUnavailable
+	} else if _, ok := err.(garden.ContainerNotFoundError); ok {
 		statusCode = http.StatusNotFound
 	}
 
@@ -1097,6 +1109,8 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 			}
 
 		case payload.Signal != nil:
+			s.logger.Info("stream-input-process-signal", lager.Data{"payload": payload})
+
 			switch *payload.Signal {
 			case garden.SignalKill:
 				err = process.Signal(garden.SignalKill)
@@ -1122,7 +1136,7 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 	}
 }
 
-func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stderr <-chan []byte, stdinPipe *io.PipeWriter) {
+func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stdinPipe *io.PipeWriter) {
 	statusCh := make(chan int, 1)
 	errCh := make(chan error, 1)
 
