@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/routes"
@@ -60,6 +61,8 @@ type Connection interface {
 	NetIn(handle string, hostPort, containerPort uint32) (uint32, uint32, error)
 	NetOut(handle string, rule garden.NetOutRule) error
 
+	SetGraceTime(handle string, graceTime time.Duration) error
+
 	Properties(handle string) (garden.Properties, error)
 	Property(handle string, name string) (string, error)
 	SetProperty(handle string, name string, value string) error
@@ -92,12 +95,17 @@ func New(network, address string) Connection {
 	return NewWithLogger(network, address, lager.NewLogger("garden-connection"))
 }
 
-func NewWithLogger(network, address string, log lager.Logger) Connection {
+func NewWithLogger(network, address string, logger lager.Logger) Connection {
 	hijacker := NewHijackStreamer(network, address)
-	return NewWithHijacker(network, address, hijacker, log)
+	return NewWithHijacker(hijacker, logger)
 }
 
-func NewWithHijacker(network, address string, hijacker HijackStreamer, log lager.Logger) Connection {
+func NewWithDialerAndLogger(dialer DialerFunc, log lager.Logger) Connection {
+	hijacker := NewHijackStreamerWithDialer(dialer)
+	return NewWithHijacker(hijacker, log)
+}
+
+func NewWithHijacker(hijacker HijackStreamer, log lager.Logger) Connection {
 	return &connection{
 		hijacker: hijacker,
 		log:      log,
@@ -560,6 +568,10 @@ func (c *connection) List(filterProperties garden.Properties) ([]string, error) 
 	}
 
 	return res.Handles, nil
+}
+
+func (c *connection) SetGraceTime(handle string, graceTime time.Duration) error {
+	return c.do(routes.SetGraceTime, graceTime, &struct{}{}, rata.Params{"handle": handle}, nil)
 }
 
 func (c *connection) Properties(handle string) (garden.Properties, error) {

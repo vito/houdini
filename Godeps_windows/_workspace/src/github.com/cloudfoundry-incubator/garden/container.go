@@ -2,6 +2,7 @@ package garden
 
 import (
 	"io"
+	"time"
 )
 
 //go:generate counterfeiter . Container
@@ -116,6 +117,9 @@ type Container interface {
 	// Metrics returns the current set of metrics for a container
 	Metrics() (Metrics, error)
 
+	// Sets the grace time.
+	SetGraceTime(graceTime time.Duration) error
+
 	// Properties returns the current set of properties
 	Properties() (Properties, error)
 
@@ -220,18 +224,6 @@ type ContainerInfo struct {
 	ProcessIDs    []uint32      // List of running processes.
 	Properties    Properties    // List of properties defined for the container.
 	MappedPorts   []PortMapping //
-}
-
-func NewError(msg string) *Error {
-	return &Error{msg}
-}
-
-type Error struct {
-	ErrorMsg string `json:"error_msg"`
-}
-
-func (e *Error) Error() string {
-	return e.ErrorMsg
 }
 
 type ContainerInfoEntry struct {

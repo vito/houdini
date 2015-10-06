@@ -1,17 +1,14 @@
 package garden
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
 //go:generate counterfeiter . Client
-
 type Client interface {
-	// Pings the garden server.
+	// Pings the garden server. Checks connectivity to the server. The server may, optionally, respond with specific
+	// errors indicating health issues.
 	//
 	// Errors:
-	// * None.
+	// * garden.UnrecoverableError indicates that the garden server has entered an error state from which it cannot recover
 	Ping() error
 
 	// Capacity returns the physical capacity of the server's machine.
@@ -59,28 +56,6 @@ type Client interface {
 	// Errors:
 	// * Container not found.
 	Lookup(handle string) (Container, error)
-}
-
-type ContainerNotFoundError struct {
-	Handle string
-}
-
-func (err ContainerNotFoundError) Error() string {
-	return fmt.Sprintf("unknown handle: %s", err.Handle)
-}
-
-func NewServiceUnavailableError(cause string) error {
-	return &ServiceUnavailableError{
-		Cause: cause,
-	}
-}
-
-type ServiceUnavailableError struct {
-	Cause string
-}
-
-func (err *ServiceUnavailableError) Error() string {
-	return err.Cause
 }
 
 // ContainerSpec specifies the parameters for creating a container. All parameters are optional.

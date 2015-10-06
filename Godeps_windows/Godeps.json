@@ -1,48 +1,26 @@
 {
 	"ImportPath": "github.com/vito/houdini",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.5.1",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
-		{
-			"ImportPath": "code.google.com/p/goprotobuf/proto",
-			"Comment": "go.r60-163",
-			"Rev": "9352842ae63ee1d7e74e074ce7bb10370c4b6b9e"
-		},
-		{
-			"ImportPath": "code.google.com/p/log4go",
-			"Comment": "go.weekly.2012-02-22-1",
-			"Rev": "c3294304d93f48a37d3bed1d382882a9c2989f99"
-		},
 		{
 			"ImportPath": "github.com/bmizerany/pat",
 			"Rev": "b8a35001b773c267eb260a691f4e5499a3531600"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden",
-			"Comment": "go-wshd-720-gdd6b2d5",
-			"Rev": "dd6b2d5f923feec84a3e144805ce65e302af75ac"
-		},
-		{
-			"ImportPath": "github.com/contester/runlib/contester_proto",
-			"Rev": "6d8b1e814ab62c244117867d8c87ed435e175b3c"
-		},
-		{
-			"ImportPath": "github.com/contester/runlib/tools",
-			"Rev": "6d8b1e814ab62c244117867d8c87ed435e175b3c"
-		},
-		{
-			"ImportPath": "github.com/contester/runlib/win32",
-			"Rev": "6d8b1e814ab62c244117867d8c87ed435e175b3c"
+			"Comment": "go-wshd-796-g5be458e",
+			"Rev": "5be458e0c99cd7bf6e031ac402af250d6d71bfad"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "09a71f6eb2dcc1c2335e37ceb78a91c6f618d561"
+			"Rev": "be52ae622d25728f17aac7330e4565201c19155c"
 		},
 		{
 			"ImportPath": "github.com/pkg/term/termios",
-			"Rev": "2266b46824adef0c4977cc4058b8052124f77c20"
+			"Rev": "d7ef5fb23c9838dfaf4731b1dd94aacaedd89181"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",
