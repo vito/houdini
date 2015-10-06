@@ -47,8 +47,8 @@ func (backend *Backend) Stop() {
 	}
 }
 
-func (backend *Backend) GraceTime(garden.Container) time.Duration {
-	return 5 * time.Minute
+func (backend *Backend) GraceTime(c garden.Container) time.Duration {
+	return c.(*container).currentGraceTime()
 }
 
 func (backend *Backend) Ping() error {

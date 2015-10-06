@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/vito/houdini/process"
@@ -33,6 +34,9 @@ type container struct {
 	env []string
 
 	processTracker process.ProcessTracker
+
+	graceTime  time.Duration
+	graceTimeL sync.RWMutex
 }
 
 func newContainer(spec garden.ContainerSpec, workDir string) *container {
@@ -228,6 +232,13 @@ func (container *container) Metrics() (garden.Metrics, error) {
 	return garden.Metrics{}, nil
 }
 
+func (container *container) SetGraceTime(t time.Duration) error {
+	container.graceTimeL.Lock()
+	container.graceTime = t
+	container.graceTimeL.Unlock()
+	return nil
+}
+
 func (container *container) currentProperties() garden.Properties {
 	properties := garden.Properties{}
 
@@ -240,6 +251,12 @@ func (container *container) currentProperties() garden.Properties {
 	container.propertiesL.RUnlock()
 
 	return properties
+}
+
+func (container *container) currentGraceTime() time.Duration {
+	container.graceTimeL.RLock()
+	defer container.graceTimeL.RUnlock()
+	return container.graceTime
 }
 
 func extractTarArchiveFile(header *tar.Header, dest string, input io.Reader) error {
