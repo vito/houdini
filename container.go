@@ -186,7 +186,7 @@ func (container *container) Run(spec garden.ProcessSpec, processIO garden.Proces
 	return container.processTracker.Run(cmd, processIO, spec.TTY)
 }
 
-func (container *container) Attach(processID uint32, processIO garden.ProcessIO) (garden.Process, error) {
+func (container *container) Attach(processID string, processIO garden.ProcessIO) (garden.Process, error) {
 	return container.processTracker.Attach(processID, processIO)
 }
 

@@ -14,7 +14,7 @@ type process interface {
 }
 
 type Process struct {
-	id uint32
+	id string
 
 	process process
 
@@ -27,7 +27,7 @@ type Process struct {
 	stderr *fanoutWriter
 }
 
-func NewProcess(id uint32) *Process {
+func NewProcess(id string) *Process {
 	return &Process{
 		id: id,
 
@@ -39,7 +39,7 @@ func NewProcess(id uint32) *Process {
 	}
 }
 
-func (p *Process) ID() uint32 {
+func (p *Process) ID() string {
 	return p.id
 }
 

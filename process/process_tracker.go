@@ -7,36 +7,34 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
+	"github.com/nu7hatch/gouuid"
 )
 
 type ProcessTracker interface {
 	Run(*exec.Cmd, garden.ProcessIO, *garden.TTYSpec) (garden.Process, error)
-	Attach(uint32, garden.ProcessIO) (garden.Process, error)
-	Restore(processID uint32)
+	Attach(string, garden.ProcessIO) (garden.Process, error)
+	Restore(processID string)
 	ActiveProcesses() []garden.Process
 	Stop(kill bool) error
 }
 
 type processTracker struct {
-	processes      map[uint32]*Process
-	nextProcessID  uint32
+	processes      map[string]*Process
 	processesMutex *sync.RWMutex
 }
 
 type UnknownProcessError struct {
-	ProcessID uint32
+	ProcessID string
 }
 
 func (e UnknownProcessError) Error() string {
-	return fmt.Sprintf("unknown process: %d", e.ProcessID)
+	return fmt.Sprintf("unknown process: %s", e.ProcessID)
 }
 
 func NewTracker() ProcessTracker {
 	return &processTracker{
-		processes:      make(map[uint32]*Process),
+		processes:      make(map[string]*Process),
 		processesMutex: new(sync.RWMutex),
-
-		nextProcessID: 1,
 	}
 }
 
@@ -44,14 +42,18 @@ func (t *processTracker) Run(cmd *exec.Cmd, processIO garden.ProcessIO, tty *gar
 	t.processesMutex.Lock()
 	defer t.processesMutex.Unlock()
 
-	processID := t.nextProcessID
-	t.nextProcessID++
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
+
+	processID := uuid.String()
 
 	process := NewProcess(processID)
 
 	process.Attach(processIO)
 
-	err := process.Start(cmd, tty)
+	err = process.Start(cmd, tty)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +63,7 @@ func (t *processTracker) Run(cmd *exec.Cmd, processIO garden.ProcessIO, tty *gar
 	return process, nil
 }
 
-func (t *processTracker) Attach(processID uint32, processIO garden.ProcessIO) (garden.Process, error) {
+func (t *processTracker) Attach(processID string, processIO garden.ProcessIO) (garden.Process, error) {
 	t.processesMutex.RLock()
 	process, ok := t.processes[processID]
 	t.processesMutex.RUnlock()
@@ -77,16 +79,12 @@ func (t *processTracker) Attach(processID uint32, processIO garden.ProcessIO) (g
 	return process, nil
 }
 
-func (t *processTracker) Restore(processID uint32) {
+func (t *processTracker) Restore(processID string) {
 	t.processesMutex.Lock()
 
 	process := NewProcess(processID)
 
 	t.processes[processID] = process
-
-	if processID >= t.nextProcessID {
-		t.nextProcessID = processID + 1
-	}
 
 	go t.waitAndReap(processID)
 
@@ -153,7 +151,7 @@ func (t *processTracker) Stop(kill bool) error {
 	return nil
 }
 
-func (t *processTracker) waitAndReap(processID uint32) {
+func (t *processTracker) waitAndReap(processID string) {
 	t.processesMutex.RLock()
 	process, ok := t.processes[processID]
 	t.processesMutex.RUnlock()
@@ -167,7 +165,7 @@ func (t *processTracker) waitAndReap(processID uint32) {
 	t.unregister(processID)
 }
 
-func (t *processTracker) unregister(processID uint32) {
+func (t *processTracker) unregister(processID string) {
 	t.processesMutex.Lock()
 	defer t.processesMutex.Unlock()
 
