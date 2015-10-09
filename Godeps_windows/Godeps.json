@@ -11,8 +11,12 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden",
-			"Comment": "go-wshd-796-g5be458e",
-			"Rev": "5be458e0c99cd7bf6e031ac402af250d6d71bfad"
+			"Comment": "go-wshd-800-g295b3b7",
+			"Rev": "295b3b7d64d3a92ec6aba1ebf6a2ad54053e52b7"
+		},
+		{
+			"ImportPath": "github.com/nu7hatch/gouuid",
+			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
