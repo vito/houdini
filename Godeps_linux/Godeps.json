@@ -11,8 +11,8 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden",
-			"Comment": "go-wshd-800-g295b3b7",
-			"Rev": "295b3b7d64d3a92ec6aba1ebf6a2ad54053e52b7"
+			"Comment": "go-wshd-803-g82ff031",
+			"Rev": "82ff031e787b461f85791f654938e631970f87ad"
 		},
 		{
 			"ImportPath": "github.com/kr/pty",
@@ -25,7 +25,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "be52ae622d25728f17aac7330e4565201c19155c"
+			"Rev": "d954ca8f99bb6748798a9c3e09d5475eef71b21c"
 		},
 		{
 			"ImportPath": "github.com/pkg/term/termios",
