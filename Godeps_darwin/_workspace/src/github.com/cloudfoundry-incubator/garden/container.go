@@ -50,16 +50,10 @@ type Container interface {
 	// Limits the CPU shares for a container.
 	LimitCPU(limits CPULimits) error
 
+	// Returns the currently set CPU limts for a container.
 	CurrentCPULimits() (CPULimits, error)
 
-	// Limits the disk usage for a container.
-	//
-	// The disk limits that are set by this command only have effect for the container's unprivileged user.
-	// Files/directories created by its privileged user are not subject to these limits.
-	//
-	// TODO: explain how disk management works.
-	LimitDisk(limits DiskLimits) error
-
+	// Returns the currently set Disk limts for a container.
 	CurrentDiskLimits() (DiskLimits, error)
 
 	// Limits the memory usage for a container.
@@ -82,7 +76,7 @@ type Container interface {
 	// If a container port is not given, the port will be the same as the
 	// container port.
 	//
-	// The two resulting ports are returned in the response.
+	// The resulting host and container ports are returned in that order.
 	//
 	// Errors:
 	// * When no port can be acquired from the server's port pool.

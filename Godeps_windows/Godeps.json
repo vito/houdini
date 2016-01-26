@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/vito/houdini",
-	"GoVersion": "go1.5.1",
+	"GoVersion": "go1.5",
 	"Packages": [
 		"./..."
 	],
@@ -11,20 +11,39 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden",
-			"Comment": "go-wshd-803-g82ff031",
-			"Rev": "82ff031e787b461f85791f654938e631970f87ad"
+			"Comment": "go-wshd-814-g491838e",
+			"Rev": "491838e5ca0410322926fb9385c666658b47d254"
+		},
+		{
+			"ImportPath": "github.com/kr/pty",
+			"Comment": "release.r56-29-gf7ee69f",
+			"Rev": "f7ee69f31298ecbe5d2b349c711e2547a617d398"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
 			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 		},
 		{
+			"ImportPath": "github.com/onsi/ginkgo",
+			"Comment": "v1.2.0-36-g3341026",
+			"Rev": "33410268c3881642c746ada23c04eeb331212596"
+		},
+		{
+			"ImportPath": "github.com/onsi/gomega",
+			"Comment": "v1.0-77-g28f13bc",
+			"Rev": "28f13bc54cf0f72e3fa395ba9d3added0b3b849c"
+		},
+		{
+			"ImportPath": "github.com/pivotal-golang/archiver/compressor",
+			"Rev": "f598990ddfeda2767a09346acf844a7d216c1256"
+		},
+		{
 			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "d954ca8f99bb6748798a9c3e09d5475eef71b21c"
+			"Rev": "95b2ada4cdf781bdcf07e5207879e034ac8c5314"
 		},
 		{
 			"ImportPath": "github.com/pkg/term/termios",
-			"Rev": "d7ef5fb23c9838dfaf4731b1dd94aacaedd89181"
+			"Rev": "5a50d6bc3358220989f87053a9505dc9e0359a90"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",

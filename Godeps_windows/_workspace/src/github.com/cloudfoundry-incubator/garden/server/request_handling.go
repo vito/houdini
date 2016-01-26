@@ -448,58 +448,6 @@ func (s *GardenServer) handleCurrentMemoryLimits(w http.ResponseWriter, r *http.
 	s.writeResponse(w, limits)
 }
 
-func (s *GardenServer) handleLimitDisk(w http.ResponseWriter, r *http.Request) {
-	handle := r.FormValue(":handle")
-
-	hLog := s.logger.Session("limit-disk", lager.Data{
-		"handle": handle,
-	})
-
-	var request garden.DiskLimits
-	if !s.readRequest(&request, w, r) {
-		return
-	}
-
-	settingLimit := false
-	if request.InodeSoft > 0 || request.InodeHard > 0 ||
-		request.ByteSoft > 0 || request.ByteHard > 0 {
-		settingLimit = true
-	}
-
-	container, err := s.backend.Lookup(handle)
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	s.bomberman.Pause(container.Handle())
-	defer s.bomberman.Unpause(container.Handle())
-
-	if settingLimit {
-		hLog.Debug("limiting", lager.Data{
-			"requested-limits": request,
-		})
-
-		err = container.LimitDisk(request)
-		if err != nil {
-			s.writeError(w, err, hLog)
-			return
-		}
-	}
-
-	limits, err := container.CurrentDiskLimits()
-	if err != nil {
-		s.writeError(w, err, hLog)
-		return
-	}
-
-	hLog.Info("limited", lager.Data{
-		"resulting-limits": limits,
-	})
-
-	s.writeResponse(w, limits)
-}
-
 func (s *GardenServer) handleCurrentDiskLimits(w http.ResponseWriter, r *http.Request) {
 	handle := r.FormValue(":handle")
 
@@ -946,9 +894,11 @@ func (s *GardenServer) handleRun(w http.ResponseWriter, r *http.Request) {
 		StreamID:  string(streamID),
 	})
 
-	go s.streamInput(json.NewDecoder(br), stdinW, process)
+	connCloseCh := make(chan struct{}, 1)
 
-	s.streamProcess(hLog, conn, process, stdinW)
+	go s.streamInput(json.NewDecoder(br), stdinW, process, connCloseCh)
+
+	s.streamProcess(hLog, conn, process, stdinW, connCloseCh)
 }
 
 func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
@@ -1015,10 +965,11 @@ func (s *GardenServer) handleAttach(w http.ResponseWriter, r *http.Request) {
 		StreamID:  string(streamID),
 	})
 
-	go s.streamInput(json.NewDecoder(br), stdinW, process)
+	connCloseCh := make(chan struct{}, 1)
 
-	s.streamProcess(hLog, conn, process, stdinW)
+	go s.streamInput(json.NewDecoder(br), stdinW, process, connCloseCh)
 
+	s.streamProcess(hLog, conn, process, stdinW, connCloseCh)
 }
 
 func (s *GardenServer) handleInfo(w http.ResponseWriter, r *http.Request) {
@@ -1118,11 +1069,12 @@ func (s *GardenServer) readRequest(msg interface{}, w http.ResponseWriter, r *ht
 	return true
 }
 
-func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process garden.Process) {
+func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, process garden.Process, connCloseCh chan struct{}) {
 	for {
 		var payload transport.ProcessPayload
 		err := decoder.Decode(&payload)
 		if err != nil {
+			close(connCloseCh)
 			in.CloseWithError(errors.New("Connection closed"))
 			return
 		}
@@ -1170,7 +1122,7 @@ func (s *GardenServer) streamInput(decoder *json.Decoder, in *io.PipeWriter, pro
 	}
 }
 
-func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stdinPipe *io.PipeWriter) {
+func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process garden.Process, stdinPipe *io.PipeWriter, connCloseCh chan struct{}) {
 	statusCh := make(chan int, 1)
 	errCh := make(chan error, 1)
 
@@ -1218,6 +1170,10 @@ func (s *GardenServer) streamProcess(logger lager.Logger, conn net.Conn, process
 			logger.Debug("detaching", lager.Data{
 				"id": process.ID(),
 			})
+
+			return
+
+		case <-connCloseCh:
 
 			return
 		}
