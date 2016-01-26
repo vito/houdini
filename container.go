@@ -7,11 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/cloudfoundry-incubator/garden"
+	"github.com/pivotal-golang/archiver/compressor"
 	"github.com/vito/houdini/process"
 )
 
@@ -101,40 +101,29 @@ func (container *container) StreamIn(spec garden.StreamInSpec) error {
 }
 
 func (container *container) StreamOut(spec garden.StreamOutSpec) (io.ReadCloser, error) {
-	absoluteSource := filepath.Join(container.workDir, filepath.FromSlash(spec.Path))
+	absoluteSource := container.workDir + string(os.PathSeparator) + filepath.FromSlash(spec.Path)
 
-	if strings.HasSuffix(spec.Path, "/") {
-		// filepath.Join strips trailing slash, so add it back
-		absoluteSource += "/."
+	// streaming out foo/. or . means stream out the contents of the dir
+	if filepath.Base(spec.Path) == "." {
+		absoluteSource += string(os.PathSeparator)
 	}
 
-	workingDir := filepath.Dir(absoluteSource)
-	compressArg := filepath.Base(absoluteSource)
+	r, w := io.Pipe()
 
-	tarCmd := exec.Command("tar", "cf", "-", compressArg)
-	tarCmd.Dir = workingDir
-
-	out, err := tarCmd.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-
-	tarCmd.Stderr = os.Stderr
-
-	err = tarCmd.Start()
-	if err != nil {
-		return nil, err
-	}
+	errs := make(chan error, 1)
+	go func() {
+		errs <- compressor.WriteTar(absoluteSource, w)
+	}()
 
 	return waitCloser{
-		ReadCloser: out,
-		proc:       tarCmd,
+		ReadCloser: r,
+		wait:       errs,
 	}, nil
 }
 
 type waitCloser struct {
 	io.ReadCloser
-	proc *exec.Cmd
+	wait <-chan error
 }
 
 func (c waitCloser) Close() error {
@@ -143,7 +132,7 @@ func (c waitCloser) Close() error {
 		return err
 	}
 
-	return c.proc.Wait()
+	return <-c.wait
 }
 
 func (container *container) LimitBandwidth(limits garden.BandwidthLimits) error { return nil }
@@ -177,8 +166,6 @@ func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint3
 func (container *container) NetOut(garden.NetOutRule) error { return nil }
 
 func (container *container) Run(spec garden.ProcessSpec, processIO garden.ProcessIO) (garden.Process, error) {
-	spec.Path = spec.Path
-
 	cmd := exec.Command(filepath.FromSlash(spec.Path), spec.Args...)
 	cmd.Dir = filepath.Join(container.workDir, filepath.FromSlash(spec.Dir))
 	cmd.Env = append(os.Environ(), append(container.env, spec.Env...)...)
