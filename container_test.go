@@ -1,6 +1,8 @@
 package houdini_test
 
 import (
+	"io"
+
 	"github.com/cloudfoundry-incubator/garden"
 
 	. "github.com/onsi/ginkgo"
@@ -66,6 +68,11 @@ var _ = Describe("Container", func() {
 					TarStream: out,
 				})
 				Expect(err).ToNot(HaveOccurred())
+
+				nothing := make([]byte, 1)
+				n, err := out.Read(nothing)
+				Expect(n).To(Equal(0))
+				Expect(err).To(Equal(io.EOF))
 
 				checkTree, err := destinationContainer.Run(garden.ProcessSpec{
 					Path: "sh",

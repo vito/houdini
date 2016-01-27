@@ -113,6 +113,7 @@ func (container *container) StreamOut(spec garden.StreamOutSpec) (io.ReadCloser,
 	errs := make(chan error, 1)
 	go func() {
 		errs <- compressor.WriteTar(absoluteSource, w)
+		_ = w.Close()
 	}()
 
 	return waitCloser{
