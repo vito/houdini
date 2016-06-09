@@ -1,0 +1,14 @@
+{
+	"ImportPath": "github.com/charlievieth/houdini",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v74",
+	"Packages": [
+		"github.com/charlievieth/fs"
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/charlievieth/fs",
+			"Rev": "da68b4db01d67853f09928100b1268dc5ee4f6c7"
+		}
+	]
+}
