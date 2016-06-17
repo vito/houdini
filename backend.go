@@ -2,13 +2,13 @@ package houdini
 
 import (
 	"errors"
-	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/charlievieth/fs"
 	"github.com/cloudfoundry-incubator/garden"
 )
 
@@ -36,7 +36,7 @@ func NewBackend(containersDir string) *Backend {
 }
 
 func (backend *Backend) Start() error {
-	return os.MkdirAll(backend.containersDir, 0755)
+	return fs.MkdirAll(backend.containersDir, 0755)
 }
 
 func (backend *Backend) Stop() {
@@ -69,7 +69,7 @@ func (backend *Backend) Create(spec garden.ContainerSpec) (garden.Container, err
 
 	dir := filepath.Join(backend.containersDir, id)
 
-	err := os.MkdirAll(dir, 0755)
+	err := fs.MkdirAll(dir, 0755)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (backend *Backend) Destroy(handle string) error {
 		return err
 	}
 
-	err = os.RemoveAll(container.workDir)
+	err = fs.RemoveAll(container.workDir)
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/charlievieth/fs"
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/pivotal-golang/archiver/compressor"
 	"github.com/vito/houdini/process"
@@ -71,7 +72,7 @@ func (container *container) Info() (garden.ContainerInfo, error) { return garden
 func (container *container) StreamIn(spec garden.StreamInSpec) error {
 	finalDestination := filepath.Join(container.workDir, filepath.FromSlash(spec.Path))
 
-	err := os.MkdirAll(finalDestination, 0755)
+	err := fs.MkdirAll(finalDestination, 0755)
 	if err != nil {
 		return err
 	}
@@ -252,21 +253,21 @@ func extractTarArchiveFile(header *tar.Header, dest string, input io.Reader) err
 	fileInfo := header.FileInfo()
 
 	if fileInfo.IsDir() {
-		err := os.MkdirAll(filePath, fileInfo.Mode())
+		err := fs.MkdirAll(filePath, fileInfo.Mode())
 		if err != nil {
 			return err
 		}
 	} else {
-		err := os.MkdirAll(filepath.Dir(filePath), 0755)
+		err := fs.MkdirAll(filepath.Dir(filePath), 0755)
 		if err != nil {
 			return err
 		}
 
 		if fileInfo.Mode()&os.ModeSymlink != 0 {
-			return os.Symlink(header.Linkname, filePath)
+			return fs.Symlink(header.Linkname, filePath)
 		}
 
-		fileCopy, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fileInfo.Mode())
+		fileCopy, err := fs.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fileInfo.Mode())
 		if err != nil {
 			return err
 		}
