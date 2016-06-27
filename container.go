@@ -129,7 +129,7 @@ type waitCloser struct {
 }
 
 func (c waitCloser) Close() error {
-	err := c.Close()
+	err := c.ReadCloser.Close()
 	if err != nil {
 		return err
 	}
