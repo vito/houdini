@@ -9,8 +9,8 @@ import (
 	"syscall"
 
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/kr/pty"
 	"github.com/vito/houdini/ptyutil"
+	"github.com/pkg/term/termios"
 )
 
 func spawn(cmd *exec.Cmd, ttySpec *garden.TTYSpec, stdout io.Writer, stderr io.Writer) (process, io.WriteCloser, error) {
@@ -20,7 +20,7 @@ func spawn(cmd *exec.Cmd, ttySpec *garden.TTYSpec, stdout io.Writer, stderr io.W
 	var processPty *os.File
 
 	if ttySpec != nil {
-		pty, tty, err := pty.Open()
+		pty, tty, err := termios.Pty()
 		if err != nil {
 			return nil, nil, err
 		}
