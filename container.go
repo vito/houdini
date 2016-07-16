@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"code.cloudfoundry.org/archiver/compressor"
+	"code.cloudfoundry.org/garden"
 	"github.com/charlievieth/fs"
-	"github.com/cloudfoundry-incubator/garden"
-	"github.com/pivotal-golang/archiver/compressor"
 	"github.com/vito/houdini/process"
 )
 

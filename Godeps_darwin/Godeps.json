@@ -7,12 +7,21 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "code.cloudfoundry.org/archiver/compressor",
+			"Rev": "adbf9ed80351644f326cb1926b9b3c256392254e"
+		},
+		{
 			"ImportPath": "code.cloudfoundry.org/garden",
 			"Comment": "go-wshd-839-gc7ed40f",
 			"Rev": "c7ed40f0b983c8d082dcdfc3dcd5adfa1020195f"
 		},
 		{
 			"ImportPath": "code.cloudfoundry.org/garden/routes",
+			"Comment": "go-wshd-839-gc7ed40f",
+			"Rev": "c7ed40f0b983c8d082dcdfc3dcd5adfa1020195f"
+		},
+		{
+			"ImportPath": "code.cloudfoundry.org/garden/server",
 			"Comment": "go-wshd-839-gc7ed40f",
 			"Rev": "c7ed40f0b983c8d082dcdfc3dcd5adfa1020195f"
 		},
@@ -47,16 +56,6 @@
 		{
 			"ImportPath": "github.com/charlievieth/fs",
 			"Rev": "1c3b3f15b0ca23a98e93ef1d987b14d53cbfb4e6"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/garden",
-			"Comment": "go-wshd-839-gc7ed40f",
-			"Rev": "c7ed40f0b983c8d082dcdfc3dcd5adfa1020195f"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/garden/server",
-			"Comment": "go-wshd-839-gc7ed40f",
-			"Rev": "c7ed40f0b983c8d082dcdfc3dcd5adfa1020195f"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -196,14 +195,6 @@
 			"ImportPath": "github.com/onsi/gomega/types",
 			"Comment": "v1.0-97-gc73e516",
 			"Rev": "c73e51675ad2455a4515b6213eb7145eaade4824"
-		},
-		{
-			"ImportPath": "github.com/pivotal-golang/archiver/compressor",
-			"Rev": "f598990ddfeda2767a09346acf844a7d216c1256"
-		},
-		{
-			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "62951a8009ab331bb21dc418074fa54e66eb9b6a"
 		},
 		{
 			"ImportPath": "github.com/pkg/term/termios",
