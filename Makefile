@@ -1,3 +1,5 @@
+.PHONY: deps clean
+
 darwin.tar.gz: dist/houdini dist/skeleton
 	tar vczf darwin.tar.gz -C dist houdini skeleton
 
@@ -29,3 +31,6 @@ deps: Godeps_windows Godeps_darwin Godeps_linux
 	GOOS=windows godep save ./... && mv Godeps/* Godeps_windows && rmdir Godeps
 	GOOS=darwin godep save ./... && mv Godeps/* Godeps_darwin && rmdir Godeps
 	GOOS=linux godep save ./... && mv Godeps/* Godeps_linux && rmdir Godeps
+	mkdir -p deps
+	rm -rf deps/src
+	mv vendor deps/src

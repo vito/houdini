@@ -1,7 +1,9 @@
 ---
 platform: linux
 
-image: docker:///golang#1.4.2-cross
+image_resource:
+  type: docker-image
+  source: {repository: golang}
 
 inputs:
 - name: houdini

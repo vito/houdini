@@ -13,17 +13,19 @@ cd $GOPATH/src/github.com/vito/houdini
 
 mkdir -p $DISTDIR/artifacts
 
-GOPATH=$PWD/Godeps_darwin/_workspace:$GOPATH GOOS=darwin GOARCH=amd64 \
+export GOPATH=$PWD/deps:$GOPATH
+
+GOOS=darwin GOARCH=amd64 \
   go build -o $DISTDIR/artifacts/houdini_darwin_amd64 ./cmd/houdini
 
-GOPATH=$PWD/Godeps_windows/_workspace:$GOPATH GOOS=windows GOARCH=amd64 \
+GOOS=windows GOARCH=amd64 \
   go build -o $DISTDIR/artifacts/houdini_windows_amd64.exe ./cmd/houdini
 
-GOPATH=$PWD/Godeps_windows/_workspace:$GOPATH GOOS=windows GOARCH=386 \
+GOOS=windows GOARCH=386 \
   go build -o $DISTDIR/artifacts/houdini_windows_386.exe ./cmd/houdini
 
-GOPATH=$PWD/Godeps_linux/_workspace:$GOPATH GOOS=linux GOARCH=amd64 \
+GOOS=linux GOARCH=amd64 \
   go build -o $DISTDIR/artifacts/houdini_linux_amd64 ./cmd/houdini
 
-GOPATH=$PWD/Godeps_linux/_workspace:$GOPATH GOOS=linux GOARCH=386 \
+GOOS=linux GOARCH=386 \
   go build -o $DISTDIR/artifacts/houdini_linux_386 ./cmd/houdini
