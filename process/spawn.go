@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	"code.cloudfoundry.org/garden"
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/vito/houdini/ptyutil"
 	"github.com/pkg/term/termios"
 )

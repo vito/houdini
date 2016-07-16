@@ -4,7 +4,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"code.cloudfoundry.org/garden"
+	"github.com/cloudfoundry-incubator/garden"
 )
 
 type process interface {

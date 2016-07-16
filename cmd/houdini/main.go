@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"code.cloudfoundry.org/garden/server"
-	"code.cloudfoundry.org/lager"
+	"github.com/cloudfoundry-incubator/garden/server"
+	"github.com/pivotal-golang/lager"
 	"github.com/vito/houdini"
 )
 

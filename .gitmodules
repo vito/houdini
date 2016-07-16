@@ -1,7 +1,3 @@
-[submodule "deps/src/code.cloudfoundry.org/archiver"]
-	path = deps/src/code.cloudfoundry.org/archiver
-	url = https://github.com/cloudfoundry/archiver
-	branch = master
 [submodule "deps/src/code.cloudfoundry.org/garden"]
 	path = deps/src/code.cloudfoundry.org/garden
 	url = https://github.com/cloudfoundry/garden

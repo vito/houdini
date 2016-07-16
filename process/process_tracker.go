@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"code.cloudfoundry.org/garden"
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/nu7hatch/gouuid"
 )
 
