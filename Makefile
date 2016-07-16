@@ -17,6 +17,6 @@ clean:
 	rm -rf Godeps_linux
 
 deps:
-	GOOS=windows godep save ./... && mv Godeps Godeps_windows
-	GOOS=darwin godep save ./... && mv Godeps Godeps_darwin
-	GOOS=linux godep save ./... && mv Godeps Godeps_linux
+	GOOS=windows godep save ./... && mv Godeps/* Godeps_windows && rmdir Godeps
+	GOOS=darwin godep save ./... && mv Godeps/* Godeps_darwin && rmdir Godeps
+	GOOS=linux godep save ./... && mv Godeps/* Godeps_linux && rmdir Godeps
