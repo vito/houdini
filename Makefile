@@ -14,14 +14,6 @@ dist/skeleton/workdir:
 
 clean:
 	rm -rf dist
-	rm -rf Godeps_windows
-	rm -rf Godeps_darwin
-	rm -rf Godeps_linux
 
 deps:
-	GOOS=windows godep save ./... && mv Godeps/* Godeps_windows && rmdir Godeps
-	GOOS=darwin godep save ./... && mv Godeps/* Godeps_darwin && rmdir Godeps
-	GOOS=linux godep save ./... && mv Godeps/* Godeps_linux && rmdir Godeps
-	mkdir -p deps
-	rm -rf deps/src
-	mv vendor deps/src
+	gosub list -a ./cmd/houdini/ | grep -v houdini | xargs gosub sync -g deps
