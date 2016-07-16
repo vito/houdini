@@ -12,7 +12,7 @@ import (
 	"unicode/utf16"
 	"unsafe"
 
-	"code.cloudfoundry.org/garden"
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/vito/houdini/win32"
 )
 

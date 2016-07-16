@@ -3,8 +3,8 @@
 Houdini is effectively a no-op Garden backend portable to esoteric platforms
 like Darwin and Windows.
 
-For a Linux Garden backend, please use
-[Guardian](https://github.com/cloudfoundry/guardian) instead.
+For a Linux Garden backend, please use [Garden
+Linux](https://github.com/cloudfoundry-incubator/garden-linux) instead.
 
 Houdini makes no attempt to isolate containers from each other. It puts them
 in a working directory, and hopes for the best.

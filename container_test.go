@@ -3,7 +3,7 @@ package houdini_test
 import (
 	"io"
 
-	"code.cloudfoundry.org/garden"
+	"github.com/cloudfoundry-incubator/garden"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
