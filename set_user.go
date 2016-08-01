@@ -8,6 +8,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/cloudfoundry-incubator/garden"
@@ -37,6 +38,20 @@ func setUser(cmd *exec.Cmd, spec garden.ProcessSpec) error {
 			Gid: uint32(gid),
 		},
 	}
+
+	var env []string
+	for _, envVar := range cmd.Env {
+		if strings.Contains(envVar, "USER=") {
+			env = append(env, "USER="+runAs.Username)
+		} else if strings.Contains(envVar, "USERNAME=") {
+			env = append(env, "USERNAME="+runAs.Username)
+		} else if strings.Contains(envVar, "HOME=") {
+			env = append(env, "HOME="+runAs.HomeDir)
+		} else {
+			env = append(env, envVar)
+		}
+	}
+	cmd.Env = env
 
 	return nil
 }
