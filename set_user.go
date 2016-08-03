@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/cloudfoundry-incubator/garden"
@@ -39,13 +39,18 @@ func setUser(cmd *exec.Cmd, spec garden.ProcessSpec) error {
 		},
 	}
 
+	userRegex := regexp.MustCompile(`^USER=.*`)
+	userNameRegex := regexp.MustCompile(`^USERNAME=.*`)
+	homeRegex := regexp.MustCompile(`^HOME=.*`)
+
 	var env []string
+
 	for _, envVar := range cmd.Env {
-		if strings.Contains(envVar, "USER=") {
+		if userRegex.Match([]byte(envVar)) {
 			env = append(env, "USER="+runAs.Username)
-		} else if strings.Contains(envVar, "USERNAME=") {
+		} else if userNameRegex.Match([]byte(envVar)) {
 			env = append(env, "USERNAME="+runAs.Username)
-		} else if strings.Contains(envVar, "HOME=") {
+		} else if homeRegex.Match([]byte(envVar)) {
 			env = append(env, "HOME="+runAs.HomeDir)
 		} else {
 			env = append(env, envVar)
