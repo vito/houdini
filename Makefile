@@ -14,6 +14,3 @@ dist/skeleton/workdir:
 
 clean:
 	rm -rf dist
-
-deps:
-	gosub list -a ./cmd/houdini/ | grep -v houdini | xargs gosub sync -g deps

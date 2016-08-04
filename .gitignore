@@ -1,2 +1,5 @@
+.goempty/
 dist/
+deps/pkg/
+deps/bin/
 *.tar.gz

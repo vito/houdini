@@ -18,12 +18,15 @@
 	path = deps/src/github.com/tedsuo/rata
 	url = https://github.com/tedsuo/rata
 	branch = master
-[submodule "deps/src/github.com/cloudfoundry-incubator/garden"]
-	path = deps/src/github.com/cloudfoundry-incubator/garden
+[submodule "deps/src/code.cloudfoundry.org/archiver"]
+	path = deps/src/code.cloudfoundry.org/archiver
+	url = https://github.com/cloudfoundry/archiver
+	branch = master
+[submodule "deps/src/code.cloudfoundry.org/garden"]
+	path = deps/src/code.cloudfoundry.org/garden
 	url = https://github.com/cloudfoundry/garden
-[submodule "deps/src/github.com/pivotal-golang/archiver"]
-	path = deps/src/github.com/pivotal-golang/archiver
-	url = https://github.com/pivotal-golang/archiver
-[submodule "deps/src/github.com/pivotal-golang/lager"]
-	path = deps/src/github.com/pivotal-golang/lager
-	url = https://github.com/pivotal-golang/lager
+	branch = master
+[submodule "deps/src/code.cloudfoundry.org/lager"]
+	path = deps/src/code.cloudfoundry.org/lager
+	url = https://github.com/cloudfoundry/lager
+	branch = master
