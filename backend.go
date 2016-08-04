@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/charlievieth/fs"
-	"github.com/cloudfoundry-incubator/garden"
+	"code.cloudfoundry.org/garden"
 )
 
 var (

@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/charlievieth/fs"
-	"github.com/cloudfoundry-incubator/garden"
-	"github.com/pivotal-golang/archiver/compressor"
+	"code.cloudfoundry.org/garden"
+	"code.cloudfoundry.org/archiver/compressor"
 	"github.com/vito/houdini/process"
 )
 
