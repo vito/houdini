@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/charlievieth/fs"
-	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/archiver/compressor"
+	"code.cloudfoundry.org/garden"
+	"github.com/charlievieth/fs"
 	"github.com/vito/houdini/process"
 )
 
@@ -166,6 +166,8 @@ func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint3
 }
 
 func (container *container) NetOut(garden.NetOutRule) error { return nil }
+
+func (container *container) BulkNetOut([]garden.NetOutRule) error { return nil }
 
 func (container *container) Run(spec garden.ProcessSpec, processIO garden.ProcessIO) (garden.Process, error) {
 	cmd := exec.Command(filepath.FromSlash(spec.Path), spec.Args...)
