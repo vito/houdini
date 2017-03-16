@@ -25,6 +25,8 @@ func (err UndefinedPropertyError) Error() string {
 }
 
 type container struct {
+	spec garden.ContainerSpec
+
 	handle string
 
 	workDir string
@@ -47,6 +49,8 @@ func newContainer(spec garden.ContainerSpec, workDir string) *container {
 	}
 
 	return &container{
+		spec: spec,
+
 		handle: spec.Handle,
 
 		workDir: workDir,
