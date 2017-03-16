@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	"code.cloudfoundry.org/garden"
 )
@@ -30,8 +29,8 @@ func (c *container) setup() error {
 			return fmt.Errorf("failed to create parent dir for bind mount: %s", err)
 		}
 
-		// darwin hard-links support directories
-		err = syscall.Link(bm.SrcPath, dest)
+		// windows symlinks ("junctions") support directories, but not hard-links
+		err = os.Symlink(bm.SrcPath, dest)
 		if err != nil {
 			return fmt.Errorf("failed to create hardlink for bind mount: %s", err)
 		}
