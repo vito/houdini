@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/charlievieth/fs"
 	"code.cloudfoundry.org/garden"
+	"github.com/charlievieth/fs"
 )
 
 var (
@@ -75,6 +75,12 @@ func (backend *Backend) Create(spec garden.ContainerSpec) (garden.Container, err
 	}
 
 	container := newContainer(spec, dir)
+
+	err = container.setup()
+	if err != nil {
+		fs.RemoveAll(dir)
+		return nil, err
+	}
 
 	backend.containersL.Lock()
 	backend.containers[spec.Handle] = container
