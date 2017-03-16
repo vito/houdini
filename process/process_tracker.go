@@ -11,7 +11,7 @@ import (
 )
 
 type ProcessTracker interface {
-	Run(*exec.Cmd, garden.ProcessIO, *garden.TTYSpec) (garden.Process, error)
+	Run(string, *exec.Cmd, garden.ProcessIO, *garden.TTYSpec) (garden.Process, error)
 	Attach(string, garden.ProcessIO) (garden.Process, error)
 	Restore(processID string)
 	ActiveProcesses() []garden.Process
@@ -38,22 +38,25 @@ func NewTracker() ProcessTracker {
 	}
 }
 
-func (t *processTracker) Run(cmd *exec.Cmd, processIO garden.ProcessIO, tty *garden.TTYSpec) (garden.Process, error) {
+func (t *processTracker) Run(passedID string, cmd *exec.Cmd, processIO garden.ProcessIO, tty *garden.TTYSpec) (garden.Process, error) {
 	t.processesMutex.Lock()
 	defer t.processesMutex.Unlock()
 
-	uuid, err := uuid.NewV4()
-	if err != nil {
-		return nil, err
-	}
+	processID := passedID
+	if processID == "" {
+		uuid, err := uuid.NewV4()
+		if err != nil {
+			return nil, err
+		}
 
-	processID := uuid.String()
+		processID = uuid.String()
+	}
 
 	process := NewProcess(processID)
 
 	process.Attach(processIO)
 
-	err = process.Start(cmd, tty)
+	err := process.Start(cmd, tty)
 	if err != nil {
 		return nil, err
 	}
