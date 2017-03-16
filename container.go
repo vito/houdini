@@ -1,7 +1,6 @@
 package houdini
 
 import (
-	"archive/tar"
 	"fmt"
 	"io"
 	"os"
@@ -10,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"code.cloudfoundry.org/archiver/compressor"
 	"code.cloudfoundry.org/garden"
 	"github.com/charlievieth/fs"
+	"github.com/concourse/go-archive/tarfs"
 	"github.com/vito/houdini/process"
 )
 
@@ -81,25 +80,9 @@ func (container *container) StreamIn(spec garden.StreamInSpec) error {
 		return err
 	}
 
-	tarReader := tar.NewReader(spec.TarStream)
-
-	for {
-		hdr, err := tarReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		if hdr.Name == "." {
-			continue
-		}
-
-		err = extractTarArchiveFile(hdr, finalDestination, tarReader)
-		if err != nil {
-			return err
-		}
+	err = tarfs.Extract(spec.TarStream, finalDestination)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -108,16 +91,11 @@ func (container *container) StreamIn(spec garden.StreamInSpec) error {
 func (container *container) StreamOut(spec garden.StreamOutSpec) (io.ReadCloser, error) {
 	absoluteSource := container.workDir + string(os.PathSeparator) + filepath.FromSlash(spec.Path)
 
-	// streaming out foo/. or . means stream out the contents of the dir
-	if filepath.Base(spec.Path) == "." {
-		absoluteSource += string(os.PathSeparator)
-	}
-
 	r, w := io.Pipe()
 
 	errs := make(chan error, 1)
 	go func() {
-		errs <- compressor.WriteTar(absoluteSource, w)
+		errs <- tarfs.Compress(w, filepath.Dir(absoluteSource), filepath.Base(absoluteSource))
 		_ = w.Close()
 	}()
 
@@ -252,38 +230,4 @@ func (container *container) currentGraceTime() time.Duration {
 	container.graceTimeL.RLock()
 	defer container.graceTimeL.RUnlock()
 	return container.graceTime
-}
-
-func extractTarArchiveFile(header *tar.Header, dest string, input io.Reader) error {
-	filePath := filepath.Join(dest, header.Name)
-	fileInfo := header.FileInfo()
-
-	if fileInfo.IsDir() {
-		err := fs.MkdirAll(filePath, fileInfo.Mode())
-		if err != nil {
-			return err
-		}
-	} else {
-		err := fs.MkdirAll(filepath.Dir(filePath), 0755)
-		if err != nil {
-			return err
-		}
-
-		if fileInfo.Mode()&os.ModeSymlink != 0 {
-			return fs.Symlink(header.Linkname, filePath)
-		}
-
-		fileCopy, err := fs.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fileInfo.Mode())
-		if err != nil {
-			return err
-		}
-		defer fileCopy.Close()
-
-		_, err = io.Copy(fileCopy, input)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
