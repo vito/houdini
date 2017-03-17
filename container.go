@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -89,6 +90,10 @@ func (container *container) StreamIn(spec garden.StreamInSpec) error {
 }
 
 func (container *container) StreamOut(spec garden.StreamOutSpec) (io.ReadCloser, error) {
+	if strings.HasSuffix(spec.Path, "/") {
+		spec.Path += "."
+	}
+
 	absoluteSource := container.workDir + string(os.PathSeparator) + filepath.FromSlash(spec.Path)
 
 	r, w := io.Pipe()

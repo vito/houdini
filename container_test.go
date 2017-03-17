@@ -93,6 +93,60 @@ var _ = Describe("Container", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(checkTree.Wait()).To(Equal(0))
 			})
+
+			It("treates a trailing slash as /.", func() {
+				process, err := container.Run(garden.ProcessSpec{
+					Path: "sh",
+					Args: []string{
+						"-exc",
+						`
+							touch a
+							touch b
+							mkdir foo/
+							touch foo/in-foo-a
+							touch foo/in-foo-b
+						`,
+					},
+				}, garden.ProcessIO{
+					Stdout: GinkgoWriter,
+					Stderr: GinkgoWriter,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(process.Wait()).To(Equal(0))
+
+				out, err := container.StreamOut(garden.StreamOutSpec{
+					Path: "foo/",
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				err = destinationContainer.StreamIn(garden.StreamInSpec{
+					Path:      ".",
+					TarStream: out,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				nothing := make([]byte, 1)
+				n, err := out.Read(nothing)
+				Expect(n).To(Equal(0))
+				Expect(err).To(Equal(io.EOF))
+
+				checkTree, err := destinationContainer.Run(garden.ProcessSpec{
+					Path: "sh",
+					Args: []string{
+						"-exc",
+						`
+							find .
+							test -e in-foo-a
+							test -e in-foo-b
+						`,
+					},
+				}, garden.ProcessIO{
+					Stdout: GinkgoWriter,
+					Stderr: GinkgoWriter,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(checkTree.Wait()).To(Equal(0))
+			})
 		})
 	})
 })
