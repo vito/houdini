@@ -31,10 +31,15 @@ func (container *container) setup() error {
 			return fmt.Errorf("failed to create parent dir for bind mount: %s", err)
 		}
 
+		absSrc, err := filepath.Abs(bm.SrcPath)
+		if err != nil {
+			return fmt.Errorf("failed to resolve source path: %s", err)
+		}
+
 		// windows symlinks ("junctions") support directories, but not hard-links
 		// darwin hardlinks have strange restrictions
 		// symlinks behave reasonably similar to bind mounts on OS X (unlike Linux)
-		err = os.Symlink(bm.SrcPath, dest)
+		err = os.Symlink(absSrc, dest)
 		if err != nil {
 			return fmt.Errorf("failed to create hardlink for bind mount: %s", err)
 		}
