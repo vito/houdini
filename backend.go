@@ -1,7 +1,6 @@
 package houdini
 
 import (
-	"errors"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -10,10 +9,6 @@ import (
 
 	"code.cloudfoundry.org/garden"
 	"github.com/charlievieth/fs"
-)
-
-var (
-	ErrContainerNotFound = errors.New("container not found")
 )
 
 type Backend struct {
@@ -95,7 +90,7 @@ func (backend *Backend) Destroy(handle string) error {
 	backend.containersL.RUnlock()
 
 	if !found {
-		return ErrContainerNotFound
+		return garden.ContainerNotFoundError{Handle: handle}
 	}
 
 	err := container.Stop(false)
@@ -145,7 +140,7 @@ func (backend *Backend) Lookup(handle string) (garden.Container, error) {
 	backend.containersL.RUnlock()
 
 	if !found {
-		return nil, ErrContainerNotFound
+		return nil, garden.ContainerNotFoundError{Handle: handle}
 	}
 
 	return container, nil
