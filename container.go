@@ -160,6 +160,11 @@ func (container *container) Run(spec garden.ProcessSpec, processIO garden.Proces
 	cmd := exec.Command(filepath.FromSlash(spec.Path), spec.Args...)
 	cmd.Dir = filepath.Join(container.workDir, filepath.FromSlash(spec.Dir))
 	cmd.Env = append(os.Environ(), append(container.env, spec.Env...)...)
+	if spec.User != "" {
+		if err := setUser(cmd, spec); err != nil {
+			return nil, err
+		}
+	}
 
 	return container.processTracker.Run(spec.ID, cmd, processIO, spec.TTY)
 }
