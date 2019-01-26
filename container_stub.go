@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"code.cloudfoundry.org/garden"
@@ -46,4 +47,12 @@ func (container *container) setup() error {
 	}
 
 	return nil
+}
+
+func (container *container) cmd(spec garden.ProcessSpec) *exec.Cmd {
+	cmd := exec.Command(filepath.FromSlash(spec.Path), spec.Args...)
+	cmd.Env = append(os.Environ(), append(container.env, spec.Env...)...)
+	cmd.Dir = filepath.Join(container.workDir, filepath.FromSlash(spec.Dir))
+
+	return cmd
 }

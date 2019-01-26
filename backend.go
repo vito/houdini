@@ -1,7 +1,6 @@
 package houdini
 
 import (
-	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -62,18 +61,13 @@ func (backend *Backend) Create(spec garden.ContainerSpec) (garden.Container, err
 		spec.Handle = id
 	}
 
-	dir := filepath.Join(backend.containersDir, id)
-
-	err := fs.MkdirAll(dir, 0755)
+	container, err := backend.newContainer(spec, id)
 	if err != nil {
 		return nil, err
 	}
 
-	container := newContainer(spec, dir)
-
 	err = container.setup()
 	if err != nil {
-		fs.RemoveAll(dir)
 		return nil, err
 	}
 
@@ -98,7 +92,7 @@ func (backend *Backend) Destroy(handle string) error {
 		return err
 	}
 
-	err = fs.RemoveAll(container.workDir)
+	err = container.cleanup()
 	if err != nil {
 		return err
 	}

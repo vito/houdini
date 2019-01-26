@@ -3,8 +3,8 @@ package houdini
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -29,7 +29,8 @@ type container struct {
 
 	handle string
 
-	workDir string
+	workDir   string
+	hasRootfs bool
 
 	properties  garden.Properties
 	propertiesL sync.RWMutex
@@ -42,7 +43,31 @@ type container struct {
 	graceTimeL sync.RWMutex
 }
 
-func newContainer(spec garden.ContainerSpec, workDir string) *container {
+func (backend *Backend) newContainer(spec garden.ContainerSpec, id string) (*container, error) {
+	var workDir string
+	var hasRootfs bool
+	if spec.RootFSPath != "" {
+		rootfsURI, err := url.Parse(spec.RootFSPath)
+		if err != nil {
+			return nil, err
+		}
+
+		switch rootfsURI.Scheme {
+		case "raw":
+			workDir = rootfsURI.Path
+			hasRootfs = true
+		default:
+			return nil, fmt.Errorf("unsupported rootfs uri (must be raw://): %s", spec.RootFSPath)
+		}
+	} else {
+		workDir = filepath.Join(backend.containersDir, id)
+
+		err := fs.MkdirAll(workDir, 0755)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	properties := spec.Properties
 	if properties == nil {
 		properties = garden.Properties{}
@@ -53,14 +78,23 @@ func newContainer(spec garden.ContainerSpec, workDir string) *container {
 
 		handle: spec.Handle,
 
-		workDir: workDir,
+		workDir:   workDir,
+		hasRootfs: hasRootfs,
 
 		properties: properties,
 
 		env: spec.Env,
 
 		processTracker: process.NewTracker(),
+	}, nil
+}
+
+func (container *container) cleanup() error {
+	if !container.hasRootfs {
+		return fs.RemoveAll(container.workDir)
 	}
+
+	return nil
 }
 
 func (container *container) Handle() string {
@@ -157,11 +191,12 @@ func (container *container) NetOut(garden.NetOutRule) error { return nil }
 func (container *container) BulkNetOut([]garden.NetOutRule) error { return nil }
 
 func (container *container) Run(spec garden.ProcessSpec, processIO garden.ProcessIO) (garden.Process, error) {
-	cmd := exec.Command(filepath.FromSlash(spec.Path), spec.Args...)
-	cmd.Dir = filepath.Join(container.workDir, filepath.FromSlash(spec.Dir))
-	cmd.Env = append(os.Environ(), append(container.env, spec.Env...)...)
-
-	return container.processTracker.Run(spec.ID, cmd, processIO, spec.TTY)
+	return container.processTracker.Run(
+		spec.ID,
+		container.cmd(spec),
+		processIO,
+		spec.TTY,
+	)
 }
 
 func (container *container) Attach(processID string, processIO garden.ProcessIO) (garden.Process, error) {
