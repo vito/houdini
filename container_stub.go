@@ -49,10 +49,10 @@ func (container *container) setup() error {
 	return nil
 }
 
-func (container *container) cmd(spec garden.ProcessSpec) *exec.Cmd {
+func (container *container) cmd(spec garden.ProcessSpec) (*exec.Cmd, error) {
 	cmd := exec.Command(filepath.FromSlash(spec.Path), spec.Args...)
 	cmd.Env = append(os.Environ(), append(container.env, spec.Env...)...)
 	cmd.Dir = filepath.Join(container.workDir, filepath.FromSlash(spec.Dir))
 
-	return cmd
+	return cmd, nil
 }

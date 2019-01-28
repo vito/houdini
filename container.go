@@ -191,9 +191,14 @@ func (container *container) NetOut(garden.NetOutRule) error { return nil }
 func (container *container) BulkNetOut([]garden.NetOutRule) error { return nil }
 
 func (container *container) Run(spec garden.ProcessSpec, processIO garden.ProcessIO) (garden.Process, error) {
+	cmd, err := container.cmd(spec)
+	if err != nil {
+		return nil, err
+	}
+
 	return container.processTracker.Run(
 		spec.ID,
-		container.cmd(spec),
+		cmd,
 		processIO,
 		spec.TTY,
 	)
