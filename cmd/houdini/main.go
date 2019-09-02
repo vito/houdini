@@ -7,12 +7,12 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
 	"code.cloudfoundry.org/garden/server"
 	"code.cloudfoundry.org/lager"
+	"github.com/containerd/containerd"
 	"github.com/vito/houdini"
 )
 
@@ -46,10 +46,16 @@ var containerGraceTime = flag.Duration(
 	"time after which to destroy idle containers",
 )
 
-var containersDir = flag.String(
-	"depot",
-	"./containers",
-	"directory in which to store containers",
+var containerdSock = flag.String(
+	"containerdSock",
+	"/run/containerd/containerd.sock",
+	"containerd connection socket",
+)
+
+var containerdNamespace = flag.String(
+	"containerdNamespace",
+	"/run/containerd/containerd.sock",
+	"containerd connection socket",
 )
 
 func main() {
@@ -58,12 +64,15 @@ func main() {
 	logger := lager.NewLogger("houdini")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
 
-	depot, err := filepath.Abs(*containersDir)
+	client, err := containerd.New(*containerdSock)
 	if err != nil {
-		logger.Fatal("failed-to-determine-depot-dir", err)
+		logger.Fatal("failed-to-construct-containerd-client", err)
 	}
 
-	backend := houdini.NewBackend(depot)
+	backend, err := houdini.NewBackend(client, *containerdNamespace)
+	if err != nil {
+		logger.Fatal("failed-to-construct-backend", err)
+	}
 
 	gardenServer := server.New(*listenNetwork, *listenAddr, *containerGraceTime, backend, logger)
 

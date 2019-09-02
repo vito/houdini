@@ -1,20 +1,20 @@
 package houdini
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"net/url"
-	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"code.cloudfoundry.org/garden"
-	"github.com/charlievieth/fs"
-	"github.com/concourse/go-archive/tarfs"
-	"github.com/vito/houdini/process"
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/cio"
+	"github.com/containerd/go-cni"
+	"github.com/pkg/errors"
 )
+
+var ErrNotImplemented = errors.New("not implemented")
 
 type UndefinedPropertyError struct {
 	Key string
@@ -25,225 +25,178 @@ func (err UndefinedPropertyError) Error() string {
 }
 
 type container struct {
-	spec garden.ContainerSpec
+	c containerd.Container
+	n cni.CNI
 
-	handle string
-
-	workDir   string
-	hasRootfs bool
-
-	properties  garden.Properties
-	propertiesL sync.RWMutex
-
-	env []string
-
-	processTracker process.ProcessTracker
+	taskOpts interface{}
 
 	graceTime  time.Duration
-	graceTimeL sync.RWMutex
-}
-
-func (backend *Backend) newContainer(spec garden.ContainerSpec, id string) (*container, error) {
-	var workDir string
-	var hasRootfs bool
-	if spec.RootFSPath != "" {
-		rootfsURI, err := url.Parse(spec.RootFSPath)
-		if err != nil {
-			return nil, err
-		}
-
-		switch rootfsURI.Scheme {
-		case "raw":
-			workDir = rootfsURI.Path
-			hasRootfs = true
-		default:
-			return nil, fmt.Errorf("unsupported rootfs uri (must be raw://): %s", spec.RootFSPath)
-		}
-	} else {
-		workDir = filepath.Join(backend.containersDir, id)
-
-		err := fs.MkdirAll(workDir, 0755)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	properties := spec.Properties
-	if properties == nil {
-		properties = garden.Properties{}
-	}
-
-	return &container{
-		spec: spec,
-
-		handle: spec.Handle,
-
-		workDir:   workDir,
-		hasRootfs: hasRootfs,
-
-		properties: properties,
-
-		env: spec.Env,
-
-		processTracker: process.NewTracker(),
-	}, nil
-}
-
-func (container *container) cleanup() error {
-	if !container.hasRootfs {
-		return fs.RemoveAll(container.workDir)
-	}
-
-	return nil
+	graceTimeL sync.Mutex
 }
 
 func (container *container) Handle() string {
-	return container.handle
+	return container.c.ID()
 }
 
 func (container *container) Stop(kill bool) error {
-	return container.processTracker.Stop(kill)
+	return container.Stop(kill)
 }
 
-func (container *container) Info() (garden.ContainerInfo, error) { return garden.ContainerInfo{}, nil }
+func (container *container) Info() (garden.ContainerInfo, error) {
+	return garden.ContainerInfo{}, ErrNotImplemented
+}
 
 func (container *container) StreamIn(spec garden.StreamInSpec) error {
-	finalDestination := filepath.Join(container.workDir, filepath.FromSlash(spec.Path))
-
-	err := fs.MkdirAll(finalDestination, 0755)
-	if err != nil {
-		return err
-	}
-
-	err = tarfs.Extract(spec.TarStream, finalDestination)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ErrNotImplemented
 }
 
 func (container *container) StreamOut(spec garden.StreamOutSpec) (io.ReadCloser, error) {
-	if strings.HasSuffix(spec.Path, "/") {
-		spec.Path += "."
-	}
+	return nil, ErrNotImplemented
+	// if strings.HasSuffix(spec.Path, "/") {
+	// 	spec.Path += "."
+	// }
 
-	absoluteSource := container.workDir + string(os.PathSeparator) + filepath.FromSlash(spec.Path)
+	// absoluteSource := container.workDir + string(os.PathSeparator) + filepath.FromSlash(spec.Path)
 
-	r, w := io.Pipe()
+	// r, w := io.Pipe()
 
-	errs := make(chan error, 1)
-	go func() {
-		errs <- tarfs.Compress(w, filepath.Dir(absoluteSource), filepath.Base(absoluteSource))
-		_ = w.Close()
-	}()
+	// errs := make(chan error, 1)
+	// go func() {
+	// 	errs <- tarfs.Compress(w, filepath.Dir(absoluteSource), filepath.Base(absoluteSource))
+	// 	_ = w.Close()
+	// }()
 
-	return waitCloser{
-		ReadCloser: r,
-		wait:       errs,
-	}, nil
+	// return waitCloser{
+	// 	ReadCloser: r,
+	// 	wait:       errs,
+	// }, nil
 }
 
-type waitCloser struct {
-	io.ReadCloser
-	wait <-chan error
+// type waitCloser struct {
+// 	io.ReadCloser
+// 	wait <-chan error
+// }
+
+// func (c waitCloser) Close() error {
+// 	err := c.ReadCloser.Close()
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return <-c.wait
+// }
+
+func (container *container) LimitBandwidth(limits garden.BandwidthLimits) error {
+	return ErrNotImplemented
 }
-
-func (c waitCloser) Close() error {
-	err := c.ReadCloser.Close()
-	if err != nil {
-		return err
-	}
-
-	return <-c.wait
-}
-
-func (container *container) LimitBandwidth(limits garden.BandwidthLimits) error { return nil }
 
 func (container *container) CurrentBandwidthLimits() (garden.BandwidthLimits, error) {
-	return garden.BandwidthLimits{}, nil
+	return garden.BandwidthLimits{}, ErrNotImplemented
 }
 
-func (container *container) LimitCPU(limits garden.CPULimits) error { return nil }
+func (container *container) LimitCPU(limits garden.CPULimits) error {
+	return ErrNotImplemented
+}
 
 func (container *container) CurrentCPULimits() (garden.CPULimits, error) {
-	return garden.CPULimits{}, nil
+	return garden.CPULimits{}, ErrNotImplemented
 }
 
-func (container *container) LimitDisk(limits garden.DiskLimits) error { return nil }
+func (container *container) LimitDisk(limits garden.DiskLimits) error {
+	return ErrNotImplemented
+}
 
 func (container *container) CurrentDiskLimits() (garden.DiskLimits, error) {
-	return garden.DiskLimits{}, nil
+	return garden.DiskLimits{}, ErrNotImplemented
 }
 
-func (container *container) LimitMemory(limits garden.MemoryLimits) error { return nil }
+func (container *container) LimitMemory(limits garden.MemoryLimits) error {
+	return ErrNotImplemented
+}
 
 func (container *container) CurrentMemoryLimits() (garden.MemoryLimits, error) {
-	return garden.MemoryLimits{}, nil
+	return garden.MemoryLimits{}, ErrNotImplemented
 }
 
 func (container *container) NetIn(hostPort, containerPort uint32) (uint32, uint32, error) {
-	return 0, 0, nil
+	return 0, 0, ErrNotImplemented
 }
 
-func (container *container) NetOut(garden.NetOutRule) error { return nil }
+func (container *container) NetOut(garden.NetOutRule) error {
+	return ErrNotImplemented
+}
 
-func (container *container) BulkNetOut([]garden.NetOutRule) error { return nil }
+func (container *container) BulkNetOut([]garden.NetOutRule) error {
+	return ErrNotImplemented
+}
 
 func (container *container) Run(spec garden.ProcessSpec, processIO garden.ProcessIO) (garden.Process, error) {
-	cmd, err := container.cmd(spec)
+	ctx := context.Background()
+
+	streams := cio.WithStreams(
+		processIO.Stdin,
+		processIO.Stdout,
+		processIO.Stderr,
+	)
+
+	task, err := container.c.NewTask(ctx, cio.NewCreator(streams), container.ioOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "new task")
+	}
+	defer task.Delete(ctx)
+
+	netNs := fmt.Sprintf("/proc/%d/ns/net", task.Pid())
+	netName := container.Handle()
+
+	_, err = container.n.Setup(ctx, netName, netNs)
+	if err != nil {
+		return nil, errors.Wrap(err, "setup network")
+	}
+
+	exitStatusC, err := task.Wait(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return container.processTracker.Run(
-		spec.ID,
-		cmd,
-		processIO,
-		spec.TTY,
-	)
+	// TODO: Exec?
+	if err := task.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	return newProcess(task, exitStatusC), nil
 }
 
 func (container *container) Attach(processID string, processIO garden.ProcessIO) (garden.Process, error) {
-	return container.processTracker.Attach(processID, processIO)
+	return nil, ErrNotImplemented
 }
 
 func (container *container) Property(name string) (string, error) {
-	container.propertiesL.RLock()
-	property, found := container.properties[name]
-	container.propertiesL.RUnlock()
+	labels, err := container.c.Labels(context.TODO())
+	if err != nil {
+		return "", err
+	}
 
+	val, found := labels[name]
 	if !found {
 		return "", UndefinedPropertyError{name}
 	}
 
-	return property, nil
+	return val, nil
 }
 
 func (container *container) SetProperty(name string, value string) error {
-	container.propertiesL.Lock()
-	container.properties[name] = value
-	container.propertiesL.Unlock()
-
-	return nil
+	_, err := container.c.SetLabels(context.TODO(), map[string]string{
+		name: value,
+	})
+	return err
 }
 
 func (container *container) RemoveProperty(name string) error {
-	container.propertiesL.Lock()
-	defer container.propertiesL.Unlock()
-
-	_, found := container.properties[name]
-	if !found {
-		return UndefinedPropertyError{name}
-	}
-
-	delete(container.properties, name)
-
-	return nil
+	return ErrNotImplemented
 }
 
 func (container *container) Properties() (garden.Properties, error) {
-	return container.currentProperties(), nil
+	return container.c.Labels(context.TODO())
 }
 
 func (container *container) Metrics() (garden.Metrics, error) {
@@ -257,22 +210,29 @@ func (container *container) SetGraceTime(t time.Duration) error {
 	return nil
 }
 
-func (container *container) currentProperties() garden.Properties {
-	properties := garden.Properties{}
-
-	container.propertiesL.RLock()
-
-	for k, v := range container.properties {
-		properties[k] = v
-	}
-
-	container.propertiesL.RUnlock()
-
-	return properties
+func (container *container) ioOpts(_ context.Context, client *containerd.Client, r *containerd.TaskInfo) error {
+	r.Options = container.taskOpts
+	return nil
 }
 
 func (container *container) currentGraceTime() time.Duration {
-	container.graceTimeL.RLock()
-	defer container.graceTimeL.RUnlock()
+	container.graceTimeL.Lock()
+	defer container.graceTimeL.Unlock()
 	return container.graceTime
+}
+
+func (container *container) cleanup() error {
+	ctx := context.Background()
+
+	err := container.n.Remove(ctx, container.Handle(), "")
+	if err != nil {
+		return errors.Wrap(err, "remove network")
+	}
+
+	err = container.c.Delete(ctx, containerd.WithSnapshotCleanup)
+	if err != nil {
+		return errors.Wrap(err, "delete container")
+	}
+
+	return nil
 }
