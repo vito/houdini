@@ -1,21 +1,20 @@
 package ptyutil
 
 import (
-	"os"
-	"syscall"
-
 	"github.com/pkg/term/termios"
+	"golang.org/x/sys/unix"
+	"os"
 )
 
 func SetRaw(tty *os.File) error {
-	var attr syscall.Termios
+	var attr unix.Termios
 
-	err := termios.Tcgetattr(uintptr(tty.Fd()), (*syscall.Termios)(&attr))
+	err := termios.Tcgetattr(tty.Fd(), &attr)
 	if err != nil {
 		return err
 	}
 
-	termios.Cfmakeraw((*syscall.Termios)(&attr))
+	termios.Cfmakeraw(&attr)
 
-	return termios.Tcsetattr(uintptr(tty.Fd()), termios.TCSANOW, (*syscall.Termios)(&attr))
+	return termios.Tcsetattr(tty.Fd(), termios.TCSANOW, &attr)
 }
