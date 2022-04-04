@@ -33,12 +33,20 @@ func (backend *Backend) Start() error {
 	return fs.MkdirAll(backend.containersDir, 0755)
 }
 
-func (backend *Backend) Stop() {
-	containers, _ := backend.Containers(nil)
+func (backend *Backend) Stop() error {
+	containers, err := backend.Containers(nil)
+	if err != nil {
+		return err
+	}
 
 	for _, container := range containers {
-		backend.Destroy(container.Handle())
+		err = backend.Destroy(container.Handle())
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func (backend *Backend) GraceTime(c garden.Container) time.Duration {
