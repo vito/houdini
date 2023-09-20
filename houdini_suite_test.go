@@ -1,7 +1,6 @@
 package houdini_test
 
 import (
-	"io/ioutil"
 	"os"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -16,7 +15,7 @@ var backend *houdini.Backend
 
 var _ = BeforeEach(func() {
 	var err error
-	depotDir, err = ioutil.TempDir("", "depot")
+	depotDir, err = os.MkdirTemp("", "depot")
 	Expect(err).ToNot(HaveOccurred())
 
 	backend = houdini.NewBackend(depotDir)
